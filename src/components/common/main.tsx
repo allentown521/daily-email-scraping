@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-
+import { useState } from "react";
 import Logo from "~/assets/logo.svg?react";
 import { cn } from "~/lib/utils";
 
@@ -8,30 +8,136 @@ interface MainProps {
   readonly filename: string;
 }
 
+interface SiteOption {
+  id: string;
+  name: string;
+  url: string | ((date: Date) => string);
+}
+
 export const Main = ({ className, filename }: MainProps) => {
+  const [selectedSites, setSelectedSites] = useState<Record<string, boolean>>({
+    productHunt: false,
+    startupfast: false,
+    uneed: false,
+    fazier: false,
+    openLaunch: false,
+    firsto: false,
+    peerlist: false,
+    tinylaunch: false,
+  });
+
+  const siteOptions: SiteOption[] = [
+    {
+      id: "productHunt",
+      name: "product hunt",
+      url: (date: Date) => {
+        const yesterday = new Date(date);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const year = yesterday.getFullYear();
+        const month = yesterday.getMonth() + 1; // getMonth() returns 0-11
+        const day = yesterday.getDate();
+        
+        return `https://www.producthunt.com/leaderboard/daily/${year}/${month}/${day}/all`;
+      },
+    },
+    {
+      id: "startupfast",
+      name: "startupfa.st",
+      url: "https://www.startupfa.st/",
+    },
+    {
+      id: "uneed",
+      name: "uneed",
+      url: "https://www.uneed.best/",
+    },
+    {
+      id: "fazier",
+      name: "fazier",
+      url: "https://fazier.com/",
+    },
+    {
+      id: "openLaunch",
+      name: "open-launch",
+      url: "https://open-launch.com/",
+    },
+    {
+      id: "firsto",
+      name: "firsto",
+      url: "https://firsto.co/",
+    },
+    {
+      id: "peerlist",
+      name: "peerlist",
+      url: (date: Date) => {
+        const year = date.getFullYear();
+        
+        // 计算当前是一年中的第几周
+        const firstDayOfYear = new Date(year, 0, 1);
+        const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+        const week = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        
+        return `https://peerlist.io/launchpad/${year}/week/${week}`;
+      },
+    },
+    {
+      id: "tinylaunch",
+      name: "tinylaunch",
+      url: "https://www.tinylaunch.com/",
+    },
+  ];
+
+  const handleCheckboxChange = (id: string) => {
+    setSelectedSites((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const handleStartScraping = () => {
+    const today = new Date();
+    
+    siteOptions.forEach((site) => {
+      if (selectedSites[site.id]) {
+        const url = typeof site.url === "function" ? site.url(today) : site.url;
+        browser.tabs.create({ url });
+      }
+    });
+  };
+
   return (
     <main
       className={cn(
-        "flex flex-col items-center justify-center gap-4",
+        "flex flex-col items-center justify-center gap-4 p-6",
         className,
       )}
     >
-      <Logo className="w-24 animate-pulse text-primary" />
-      <p className="text-pretty text-center leading-tight">
-        {browser.i18n.getMessage("hello")}{" "}
-        <code className="inline-block rounded-sm bg-muted px-1.5 text-sm text-muted-foreground">
-          {filename}
-        </code>{" "}
-        👋
-      </p>
-      <a
-        href="https://turbostarter.dev/docs/extension"
-        target="_blank"
-        rel="noreferrer"
-        className="cursor-pointer text-sm text-primary underline hover:no-underline"
-      >
-        {browser.i18n.getMessage("learnMore")}
-      </a>
+      <Logo className="w-24 text-primary" />
+      <div className="w-full max-w-md">
+        <h2 className="mb-4 text-center text-xl font-bold">选择要抓取的网站</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {siteOptions.map((site) => (
+            <div key={site.id} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id={site.id}
+                checked={selectedSites[site.id]}
+                onChange={() => handleCheckboxChange(site.id)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor={site.id} className="text-sm font-medium">
+                {site.name}
+              </label>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={handleStartScraping}
+          className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        >
+          开始抓取
+        </button>
+      </div>
     </main>
   );
 };
