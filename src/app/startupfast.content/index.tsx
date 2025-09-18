@@ -1,0 +1,39 @@
+import { Button } from "@/components/ui/button";
+import ReactDOM from "react-dom/client";
+import { browser } from "wxt/browser";
+import { createShadowRootUi, defineContentScript } from "#imports";
+
+import "~/assets/styles/globals.css";
+import { Message, sendMessage } from "@/lib/messaging";
+
+export default defineContentScript({
+  matches: ["https://www.startupfa.st/trending?filter=today"],
+  cssInjectionMode: "ui",
+  runAt: "document_end",
+
+  async main(ctx) {
+    console.log("Content script is running on startupfa.st.");
+
+    const urls = [];
+
+    document.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href");
+      const title = a.getAttribute("title");
+      if (
+        href &&
+        href.startsWith("https") &&
+        title &&
+        !href.includes("startupfa") &&
+        !href.includes("open-launch")
+      ) {
+        urls.push(href);
+      }
+    });
+
+    console.log(`Total URLs collected: ${urls.length}`);
+
+    urls.forEach((url) => {
+      sendMessage(Message.OPEN_TAB, url);
+    });
+  },
+});
