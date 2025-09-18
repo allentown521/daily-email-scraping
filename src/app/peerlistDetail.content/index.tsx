@@ -20,6 +20,13 @@ export default defineContentScript({
       }
     });
 
+    document.querySelectorAll("button").forEach((a) => {
+      const href = a.getAttribute("href");
+      if (href && href.includes("ref=peerlist")) {
+        urls.push(href);
+      }
+    });
+
     if (urls && urls[0]) {
       await sendMessage(Message.OPEN_TAB, `${urls[0]}`);
     }
