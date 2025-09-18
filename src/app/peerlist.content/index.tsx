@@ -4,6 +4,7 @@ import { browser } from "wxt/browser";
 import { createShadowRootUi, defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
+import { Message, sendMessage } from "@/lib/messaging";
 
 export default defineContentScript({
   matches: ["https://peerlist.io/launchpad/*/*/*"],

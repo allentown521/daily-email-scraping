@@ -1,7 +1,4 @@
-import { Button } from "@/components/ui/button";
-import ReactDOM from "react-dom/client";
-import { browser } from "wxt/browser";
-import { createShadowRootUi, defineContentScript } from "#imports";
+import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
