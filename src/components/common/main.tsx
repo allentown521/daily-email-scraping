@@ -24,6 +24,8 @@ export const Main = ({ className, filename }: MainProps) => {
     firsto: false,
     peerlist: false,
     tinylaunch: false,
+    openhunts: false,
+    auraplusplus: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -56,6 +58,7 @@ export const Main = ({ className, filename }: MainProps) => {
         openLaunch: newGroupSelection.daily,
         firsto: newGroupSelection.daily,
         auraplusplus: newGroupSelection.daily,
+        openhunts: newGroupSelection.daily,
       }));
     }
   };
@@ -135,6 +138,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "auraplusplus",
       name: "auraplusplus",
       url: "https://auraplusplus.com/trending?filter=today",
+    },
+    {
+      id: "openhunts",
+      name: "openhunts",
+      url: "https://openhunts.com/trending?filter=today",
     },
   ];
 
