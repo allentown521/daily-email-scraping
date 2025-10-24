@@ -27,8 +27,9 @@ export default defineContentScript({
 
     console.log(`Total URLs collected: ${urls.length}`);
 
-    urls.forEach((url) => {
-      sendMessage(Message.OPEN_TAB, url);
-    });
+    for (const url of urls) {
+      await sendMessage(Message.OPEN_TAB, `${url}`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
   },
 });

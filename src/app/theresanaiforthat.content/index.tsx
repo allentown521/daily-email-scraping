@@ -4,24 +4,21 @@ import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
 
 export default defineContentScript({
-  matches: ["https://auraplusplus.com/trending?filter=today"],
+  matches: ["https://theresanaiforthat.com/period/*"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
   async main(ctx) {
-    console.log("Content script is running on auraplusplus.");
+    console.log("Content script is running on theresanaiforthat.");
 
     const urls = [];
 
-    document.querySelectorAll("a").forEach((a) => {
-      const href = a.getAttribute("href");
-      const title = a.getAttribute("title");
+    document.querySelectorAll("li").forEach((a) => {
+      const href = a.getAttribute("data-url");
       if (
         href &&
         href.startsWith("https") &&
-        title &&
-        !href.includes("open-launch") &&
-        !href.includes("auraplusplus")
+        !href.includes("theresanaiforthat")
       ) {
         urls.push(href);
       }

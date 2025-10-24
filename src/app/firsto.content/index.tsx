@@ -1,7 +1,4 @@
-import { Button } from "@/components/ui/button";
-import ReactDOM from "react-dom/client";
-import { browser } from "wxt/browser";
-import { createShadowRootUi, defineContentScript } from "#imports";
+import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
@@ -32,8 +29,9 @@ export default defineContentScript({
 
     console.log(`Total URLs collected: ${urls.length}`);
 
-    urls.forEach((url) => {
-      sendMessage(Message.OPEN_TAB, `${url}`);
-    });
+    for (const url of urls) {
+      await sendMessage(Message.OPEN_TAB, `${url}`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
   },
 });
