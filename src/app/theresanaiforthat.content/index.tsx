@@ -30,5 +30,6 @@ export default defineContentScript({
       await sendMessage(Message.OPEN_TAB, `${url}`);
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
+    console.log(`All ${urls.length} tabs have been opened.`);
   },
 });
