@@ -45,7 +45,7 @@ onMessage(Message.AUTH_SUCCESS, (meessage) => {
 
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name.startsWith("closeTab_")) {
-    const tabId = parseInt(alarm.name.split("_")[1]);
+    const tabId = Number.parseInt(alarm.name.split("_")[1]);
     if (tabId) {
       browser.tabs.remove(tabId);
     }
@@ -55,7 +55,7 @@ browser.alarms.onAlarm.addListener((alarm) => {
 onMessage(Message.OPEN_TAB, (meessage) => {
   browser.tabs.create({ url: meessage.data, active: false }).then((tab) => {
     const alarmName = `closeTab_${tab.id}`;
-    browser.alarms.create(alarmName, { delayInMinutes: 1 });
+    browser.alarms.create(alarmName, { delayInMinutes: 2 });
   });
 });
 
