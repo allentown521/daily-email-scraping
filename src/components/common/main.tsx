@@ -120,7 +120,7 @@ export const Main = ({ className, filename }: MainProps) => {
       url: (date: Date) => {
         const year = date.getFullYear();
 
-        // 计算当前是一年中的第几周
+        // Calculate which week of the year it is
         const firstDayOfYear = new Date(year, 0, 1);
         const pastDaysOfYear =
           (date.getTime() - firstDayOfYear.getTime()) / 86400000;
@@ -180,7 +180,7 @@ export const Main = ({ className, filename }: MainProps) => {
     >
       <Logo className="w-24 text-primary" />
       <div className="w-full max-w-md">
-        <h2 className="mb-4 text-center text-xl font-bold">选择要抓取的网站</h2>
+        <h2 className="mb-4 text-center text-xl font-bold">Select websites to scrape</h2>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex items-center space-x-2">
             <input
@@ -191,7 +191,7 @@ export const Main = ({ className, filename }: MainProps) => {
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <label htmlFor="daily" className="text-sm font-medium">
-              日计划
+              Daily
             </label>
           </div>
           <div className="flex items-center space-x-2">
@@ -203,7 +203,7 @@ export const Main = ({ className, filename }: MainProps) => {
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <label htmlFor="weekly" className="text-sm font-medium">
-              周计划
+              Weekly
             </label>
           </div>
 
@@ -226,7 +226,7 @@ export const Main = ({ className, filename }: MainProps) => {
           onClick={handleStartScraping}
           className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          开始抓取
+          Start Scraping
         </button>
       </div>
     </main>
