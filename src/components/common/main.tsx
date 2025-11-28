@@ -4,6 +4,7 @@ import {
   deactivatePremium,
   validatePremiumOnline,
 } from "@/service/premium";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
 import { cn } from "~/lib/utils";
@@ -15,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 interface MainProps {
   readonly className?: string;
@@ -62,8 +62,8 @@ export const Main = ({ className, filename }: MainProps) => {
     trialStartDate: string | null;
     hasStarted: boolean;
   }>({ isTrial: false, daysLeft: 0, trialStartDate: null, hasStarted: false });
-  
-  const [fpHash, setFpHash] = useState('');
+
+  const [fpHash, setFpHash] = useState("");
   const handleGroupCheckboxChange = (group: string) => {
     const newGroupSelection = {
       ...groupSelection,
@@ -196,8 +196,11 @@ export const Main = ({ className, filename }: MainProps) => {
       const { visitorId } = await fp.get();
       return visitorId;
     } catch (error) {
-      console.warn('FingerprintJS failed, falling back to manual fingerprint:', error);
-      
+      console.warn(
+        "FingerprintJS failed, falling back to manual fingerprint:",
+        error
+      );
+
       // 降级到手动指纹生成
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
@@ -229,33 +232,63 @@ export const Main = ({ className, filename }: MainProps) => {
 
   // 开始试用
   const startTrial = async () => {
-    // 使用 FingerprintJS 的 visitorId 作为设备指纹
-    let deviceFingerprint = fpHash;
-    if (!deviceFingerprint) {
-      // 如果 fpHash 还没准备好，手动生成
-      deviceFingerprint = await generateDeviceFingerprint();
+    try {
+      // 使用 FingerprintJS 的 visitorId 作为设备指纹
+      let deviceFingerprint = fpHash;
+      if (!deviceFingerprint) {
+        // 如果 fpHash 还没准备好，手动生成
+        deviceFingerprint = await generateDeviceFingerprint();
+      }
+
+      // 调用API检查试用资格
+      const email = `${deviceFingerprint}@producthunt.scaper.com`;
+      const response = await fetch(
+        `https://api.focusapps.app/free-trial?email=${encodeURIComponent(
+          email
+        )}`
+      );
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          // 如果返回是409，提示用户试用机会已用
+          alert(
+            "Trial opportunity has been used, please purchase a premium license"
+          );
+        } else {
+          alert(
+            "An error occurred while starting the trial, please try again later"
+          );
+        }
+
+        return;
+      }
+
+      const startDate = new Date().toISOString();
+
+      const trialData = {
+        deviceFingerprint,
+        startDate,
+        hasStarted: true,
+      };
+
+      await browser.storage.local.set({
+        deviceFingerprint,
+        trialInfo: trialData,
+      });
+
+      // 更新状态
+      setTrialInfo({
+        isTrial: true,
+        daysLeft: 3,
+        trialStartDate: startDate,
+        hasStarted: true,
+      });
+    } catch (error) {
+      console.error("Error starting trial:", error);
+      alert(
+        "An error occurred while starting the trial, please try again later"
+      );
     }
-    
-    const startDate = new Date().toISOString();
-
-    const trialData = {
-      deviceFingerprint,
-      startDate,
-      hasStarted: true,
-    };
-
-    await browser.storage.local.set({
-      deviceFingerprint,
-      trialInfo: trialData,
-    });
-
-    // 更新状态
-    setTrialInfo({
-      isTrial: true,
-      daysLeft: 3,
-      trialStartDate: startDate,
-      hasStarted: true,
-    });
   };
 
   // 检查试用状态
@@ -323,7 +356,7 @@ export const Main = ({ className, filename }: MainProps) => {
         const { visitorId } = await fp.get();
         setFpHash(visitorId);
       } catch (error) {
-        console.warn('Failed to load FingerprintJS:', error);
+        console.warn("Failed to load FingerprintJS:", error);
       }
     };
 
@@ -514,6 +547,9 @@ export const Main = ({ className, filename }: MainProps) => {
                   >
                     🚀 Start Free Trial
                   </Button>
+                  <p className="mt-1 text-sm text-green-600 font-medium">
+                    No Credit Card Required
+                  </p>
                 </div>
               </div>
             )}
