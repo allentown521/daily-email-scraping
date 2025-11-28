@@ -55,6 +55,12 @@ export const Main = ({ className, filename }: MainProps) => {
   const [activateError, setActivateError] = useState("");
   const [isLoadingValidatePremiumOnline, setIsLoadingValidatePremiumOnline] =
     useState(true);
+  const [trialInfo, setTrialInfo] = useState<{
+    isTrial: boolean;
+    daysLeft: number;
+    trialStartDate: string | null;
+    hasStarted: boolean;
+  }>({ isTrial: false, daysLeft: 0, trialStartDate: null, hasStarted: false });
   const handleGroupCheckboxChange = (group: string) => {
     const newGroupSelection = {
       ...groupSelection,
@@ -179,6 +185,116 @@ export const Main = ({ className, filename }: MainProps) => {
     }));
   };
 
+  // 生成设备指纹
+  const generateDeviceFingerprint = async (): Promise<string> => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillText("Device fingerprint", 2, 2);
+    }
+
+    const fingerprint = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + "x" + screen.height,
+      new Date().getTimezoneOffset(),
+      canvas.toDataURL(),
+      // 添加更多浏览器特征
+    ].join("|");
+
+    // 简单哈希
+    let hash = 0;
+    for (let i = 0; i < fingerprint.length; i++) {
+      const char = fingerprint.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    return Math.abs(hash).toString(36);
+  };
+
+  // 开始试用
+  const startTrial = async () => {
+    const deviceFingerprint = await generateDeviceFingerprint();
+    const startDate = new Date().toISOString();
+
+    const trialData = {
+      deviceFingerprint,
+      startDate,
+      hasStarted: true,
+    };
+
+    await browser.storage.local.set({
+      deviceFingerprint,
+      trialInfo: trialData,
+    });
+
+    // 更新状态
+    setTrialInfo({
+      isTrial: true,
+      daysLeft: 3,
+      trialStartDate: startDate,
+      hasStarted: true,
+    });
+  };
+
+  // 检查试用状态
+  const checkTrialStatus = async () => {
+    const storage = await browser.storage.local.get([
+      "trialInfo",
+      "deviceFingerprint",
+    ]);
+
+    let deviceFingerprint = storage.deviceFingerprint;
+    if (!deviceFingerprint) {
+      deviceFingerprint = await generateDeviceFingerprint();
+      await browser.storage.local.set({ deviceFingerprint });
+    }
+
+    const trialData = storage.trialInfo;
+
+    if (!trialData || !trialData.hasStarted) {
+      // 试用未开始
+      setTrialInfo({
+        isTrial: false,
+        daysLeft: 0,
+        trialStartDate: null,
+        hasStarted: false,
+      });
+      return false;
+    }
+
+    // 检查设备指纹是否匹配（防止复制存储）
+    if (trialData.deviceFingerprint !== deviceFingerprint) {
+      // 设备不匹配，重置试用状态
+      await browser.storage.local.remove(["trialInfo"]);
+      setTrialInfo({
+        isTrial: false,
+        daysLeft: 0,
+        trialStartDate: null,
+        hasStarted: false,
+      });
+      return false;
+    }
+
+    const startDate = new Date(trialData.startDate);
+    const now = new Date();
+    const daysDiff = Math.floor(
+      (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const daysLeft = Math.max(0, 3 - daysDiff);
+
+    setTrialInfo({
+      isTrial: daysLeft > 0,
+      daysLeft,
+      trialStartDate: trialData.startDate,
+      hasStarted: true,
+    });
+
+    return daysLeft > 0;
+  };
+
   useEffect(() => {
     const fetchPremium = async () => {
       const { activated, error, type } = await validatePremiumOnline();
@@ -186,6 +302,8 @@ export const Main = ({ className, filename }: MainProps) => {
       setLicenseError(error);
       setLicenseType(type);
 
+      // 检查试用状态
+      await checkTrialStatus();
       setIsLoadingValidatePremiumOnline(false);
     };
 
@@ -193,10 +311,16 @@ export const Main = ({ className, filename }: MainProps) => {
   }, []);
 
   const handleStartScraping = () => {
-    // 检查是否是会员
-    if (!hasPurchased) {
+    // 检查是否是会员或在试用期内
+    if (!hasPurchased && !trialInfo.isTrial) {
       alert("Please purchase a premium license to use this feature.");
       return;
+    }
+
+    if (trialInfo.isTrial && !hasPurchased) {
+      alert(
+        `🎯 Trial Mode: ${trialInfo.daysLeft} days remaining. Enjoy your free trial!`
+      );
     }
 
     const today = new Date();
@@ -294,15 +418,19 @@ export const Main = ({ className, filename }: MainProps) => {
         </div>
         <Button
           onClick={handleStartScraping}
-          disabled={!hasPurchased}
+          disabled={!hasPurchased && !trialInfo.isTrial}
           className={cn(
             "mt-6 w-full rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-            hasPurchased
+            hasPurchased || trialInfo.isTrial
               ? "cursor-pointer bg-primary text-white hover:bg-primary/90"
               : "cursor-not-allowed bg-gray-300 text-gray-500"
           )}
         >
-          {hasPurchased ? "Start Scraping" : "🔒 Premium Required"}
+          {hasPurchased
+            ? "Start Scraping"
+            : trialInfo.isTrial
+            ? `🎯 Start Scraping (${trialInfo.daysLeft} days left)`
+            : "🔒 Premium Required"}
         </Button>
         <div id="purchase" className="my-8">
           <div className="mb-6 text-center">
@@ -312,6 +440,62 @@ export const Main = ({ className, filename }: MainProps) => {
             <p className="text-gray-600">
               Get unlimited access to all scraping features
             </p>
+
+            {/* 试用状态提示 */}
+            {trialInfo.isTrial && !hasPurchased && (
+              <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-2xl">🎯</span>
+                  <div>
+                    <p className="font-semibold text-blue-800">
+                      Free Trial Active
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      {trialInfo.daysLeft} days remaining in your trial
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!trialInfo.hasStarted && !hasPurchased && (
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-4">
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-2xl">🎁</span>
+                    <div>
+                      <p className="font-semibold text-yellow-800">
+                        3-Day Free Trial
+                      </p>
+                      <p className="text-sm text-yellow-600">
+                        Try all features before purchasing
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={startTrial}
+                    className="w-full cursor-pointer bg-yellow-500 hover:bg-yellow-600 text-white font-semibold"
+                    size="sm"
+                  >
+                    🚀 Start Free Trial
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {trialInfo.hasStarted && !trialInfo.isTrial && !hasPurchased && (
+              <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-2xl">⏰</span>
+                  <div>
+                    <p className="font-semibold text-red-800">Trial Expired</p>
+                    <p className="text-sm text-red-600">
+                      Your 3-day free trial has ended
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="subscription-cards-container mb-6">
