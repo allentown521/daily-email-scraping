@@ -4,8 +4,8 @@
     "message": "Open source browser extension starter kit."
   },
   "extensionName": {
-    "description": "Name of the extension.",
-    "message": "Email Scraper"
+    "description": "Scraper Email for Product Hunt Daily leaderboard and peerlist, tinylaunch, uneed.",
+    "message": "Product Hunt Email Scraper"
   },
   "hello": {
     "message": "Hello from"
