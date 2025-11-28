@@ -1,7 +1,20 @@
+import { BuyTypeEnum } from "@/service/lemonsqueezy";
+import {
+  activatePremium,
+  deactivatePremium,
+  validatePremiumOnline,
+} from "@/service/premium";
+import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
-import { useState } from "react";
-import Logo from "~/assets/logo.svg?react";
 import { cn } from "~/lib/utils";
+import { Button } from "../ui/Button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 
 interface MainProps {
   readonly className?: string;
@@ -36,6 +49,12 @@ export const Main = ({ className, filename }: MainProps) => {
     }
   );
 
+  const [hasPurchased, setHasPurchased] = useState(false); // 新增购买状态
+  const [licenseError, setLicenseError] = useState("");
+  const [licenseType, setLicenseType] = useState(null);
+  const [activateError, setActivateError] = useState("");
+  const [isLoadingValidatePremiumOnline, setIsLoadingValidatePremiumOnline] =
+    useState(true);
   const handleGroupCheckboxChange = (group: string) => {
     const newGroupSelection = {
       ...groupSelection,
@@ -160,7 +179,26 @@ export const Main = ({ className, filename }: MainProps) => {
     }));
   };
 
+  useEffect(() => {
+    const fetchPremium = async () => {
+      const { activated, error, type } = await validatePremiumOnline();
+      setHasPurchased(activated);
+      setLicenseError(error);
+      setLicenseType(type);
+
+      setIsLoadingValidatePremiumOnline(false);
+    };
+
+    fetchPremium();
+  }, []);
+
   const handleStartScraping = () => {
+    // 检查是否是会员
+    if (!hasPurchased) {
+      alert("Please purchase a premium license to use this feature.");
+      return;
+    }
+
     const today = new Date();
 
     siteOptions.forEach((site) => {
@@ -171,6 +209,37 @@ export const Main = ({ className, filename }: MainProps) => {
     });
   };
 
+  async function activateLicense() {
+    const key = prompt(
+      "Please enter your license key from your Lemonsqueezy order email"
+    );
+    if (key) {
+      setActivateError("");
+      activatePremium(key)
+        .then((data) => {
+          setHasPurchased(true);
+          setLicenseType(data.type);
+          setLicenseError("");
+        })
+        .catch((err) => {
+          console.log(err);
+          setActivateError(err.data?.error || err.message);
+        });
+    }
+  }
+
+  async function deactivateLicense() {
+    confirm("Are you sure you want to deactivate your license?") &&
+      deactivatePremium()
+        .then(() => {
+          setHasPurchased(false);
+          setLicenseType(null);
+          setLicenseError("");
+        })
+        .catch((err) => {
+          setActivateError(err.data?.error || err.message);
+        });
+  }
   return (
     <main
       className={cn(
@@ -178,9 +247,10 @@ export const Main = ({ className, filename }: MainProps) => {
         className
       )}
     >
-      <Logo className="w-24 text-primary" />
       <div className="w-full max-w-md">
-        <h2 className="mb-4 text-center text-xl font-bold">Select websites to scrape</h2>
+        <h2 className="mb-4 text-center text-xl font-bold">
+          Select websites to scrape
+        </h2>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex items-center space-x-2">
             <input
@@ -222,12 +292,174 @@ export const Main = ({ className, filename }: MainProps) => {
             </div>
           ))}
         </div>
-        <button
+        <Button
           onClick={handleStartScraping}
-          className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          disabled={!hasPurchased}
+          className={cn(
+            "mt-6 w-full rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+            hasPurchased
+              ? "cursor-pointer bg-primary text-white hover:bg-primary/90"
+              : "cursor-not-allowed bg-gray-300 text-gray-500"
+          )}
         >
-          Start Scraping
-        </button>
+          {hasPurchased ? "Start Scraping" : "🔒 Premium Required"}
+        </Button>
+        <div id="purchase" className="my-8">
+          <div className="mb-6 text-center">
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">
+              🚀 Unlock Premium Features
+            </h2>
+            <p className="text-gray-600">
+              Get unlimited access to all scraping features
+            </p>
+          </div>
+
+          <div className="subscription-cards-container mb-6">
+            {[
+              {
+                title: "Lifetime Purchase",
+                price: "$19.9",
+                period: "one-time payment",
+                licenseType: BuyTypeEnum.ONETIME,
+                devices: 10,
+                purchaseUrl:
+                  "https://marinara.lemonsqueezy.com/buy/ebe3b512-fb90-4ae4-8a04-7f1962a5b5cf",
+                features: [
+                  "Unlimited usage",
+                  "Up to 10 devices",
+                  "Lifetime updates",
+                ],
+              },
+            ].map((card, index) => (
+              <Card
+                className={cn(
+                  "relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-105",
+                  hasPurchased && card.licenseType === licenseType
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 bg-white"
+                )}
+                key={index}
+              >
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl font-bold text-gray-900">
+                      {card.title}
+                    </CardTitle>
+                    {hasPurchased && card.licenseType === licenseType && (
+                      <div className="flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+                        ✓ Active
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {card.price}
+                    </span>
+                    <span className="text-gray-600">/{card.period}</span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pb-4">
+                  <ul className="space-y-2">
+                    {card.features.map((feature, featureIndex) => (
+                      <li
+                        key={featureIndex}
+                        className="flex items-center text-sm text-gray-700"
+                      >
+                        <svg
+                          className="mr-2 h-4 w-4 text-green-500"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+
+                <CardFooter>
+                  {!hasPurchased || card.licenseType !== licenseType ? (
+                    <a
+                      href={card.purchaseUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full"
+                    >
+                      <Button
+                        className="w-full cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-semibold"
+                        size="lg"
+                      >
+                        Purchase Now
+                      </Button>
+                    </a>
+                  ) : (
+                    <div className="w-full space-y-3">
+                      {licenseError ? (
+                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+                          {licenseError}
+                        </div>
+                      ) : (
+                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 font-medium">
+                          ✨ License successfully activated
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        className="w-full cursor-pointer border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={deactivateLicense}
+                      >
+                        Deactivate License
+                      </Button>
+                    </div>
+                  )}
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            {hasPurchased ? (
+              <div className="text-center">
+                <a
+                  href="https://app.lemonsqueezy.com/my-orders/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex"
+                >
+                  <Button
+                    variant="outline"
+                    className="cursor-pointer border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  >
+                    📋 Manage Order & Devices
+                  </Button>
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-center">
+                  <Button
+                    variant="secondary"
+                    className="w-full cursor-pointer"
+                    onClick={activateLicense}
+                  >
+                    🔑 Activate License
+                  </Button>
+                </div>
+                {activateError && (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 text-center">
+                    ⚠️ {activateError}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </main>
   );

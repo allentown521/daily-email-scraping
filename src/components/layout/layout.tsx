@@ -1,5 +1,4 @@
 import { StorageKey, useStorage } from "@/lib/storage";
-import { betterAuth } from "@/lib/supabase";
 import { Theme } from "@/types";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "~/components/common/error-boundary";
@@ -8,7 +7,6 @@ import { Footer } from "~/components/layout/footer";
 import { Toaster } from "~/components/ui/sonner";
 import { cn } from "~/lib/utils";
 import "~/assets/styles/globals.css";
-import { useEffect } from "react";
 
 interface LayoutProps {
   readonly children: React.ReactNode;
@@ -46,16 +44,6 @@ const LayoutContent = ({
   const { data: theme } = useStorage(StorageKey.THEME);
   const { set: setUser } = useStorage(StorageKey.USER);
   // const { data: session } = betterAuth.useSession();
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data: session, error } = await betterAuth.getSession();
-      if (!error) {
-        setUser(session?.user ?? null);
-      }
-    };
-    fetchSession();
-  }, [setUser]);
 
   return (
     <div
