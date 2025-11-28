@@ -11,6 +11,9 @@ importers:
       '@biomejs/biome':
         specifier: ^1.9.4
         version: 1.9.4
+      '@fingerprintjs/fingerprintjs':
+        specifier: ^5.0.1
+        version: 5.0.1
       '@hookform/resolvers':
         specifier: ^5.0.1
         version: 5.2.2(react-hook-form@7.64.0(react@19.1.0))
@@ -605,6 +608,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fingerprintjs/fingerprintjs@5.0.1':
+    resolution: {integrity: sha512-KbaeE/rk2WL8MfpRP6jTI4lSr42SJPjvkyrjP3QU6uUDkOMWWYC2Ts1sNSYcegHC8avzOoYTHBj+2fTqvZWQBA==}
 
   '@floating-ui/core@1.7.3':
     resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
@@ -4709,6 +4715,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.10':
     optional: true
+
+  '@fingerprintjs/fingerprintjs@5.0.1': {}
 
   '@floating-ui/core@1.7.3':
     dependencies:

@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 interface MainProps {
   readonly className?: string;
@@ -61,6 +62,8 @@ export const Main = ({ className, filename }: MainProps) => {
     trialStartDate: string | null;
     hasStarted: boolean;
   }>({ isTrial: false, daysLeft: 0, trialStartDate: null, hasStarted: false });
+  
+  const [fpHash, setFpHash] = useState('');
   const handleGroupCheckboxChange = (group: string) => {
     const newGroupSelection = {
       ...groupSelection,
@@ -187,36 +190,52 @@ export const Main = ({ className, filename }: MainProps) => {
 
   // 生成设备指纹
   const generateDeviceFingerprint = async (): Promise<string> => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.textBaseline = "top";
-      ctx.font = "14px Arial";
-      ctx.fillText("Device fingerprint", 2, 2);
-    }
+    try {
+      // 使用 FingerprintJS 生成更准确的设备指纹
+      const fp = await FingerprintJS.load();
+      const { visitorId } = await fp.get();
+      return visitorId;
+    } catch (error) {
+      console.warn('FingerprintJS failed, falling back to manual fingerprint:', error);
+      
+      // 降级到手动指纹生成
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.textBaseline = "top";
+        ctx.font = "14px Arial";
+        ctx.fillText("Device fingerprint", 2, 2);
+      }
 
-    const fingerprint = [
-      navigator.userAgent,
-      navigator.language,
-      screen.width + "x" + screen.height,
-      new Date().getTimezoneOffset(),
-      canvas.toDataURL(),
-      // 添加更多浏览器特征
-    ].join("|");
+      const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + "x" + screen.height,
+        new Date().getTimezoneOffset(),
+        canvas.toDataURL(),
+        // 添加更多浏览器特征
+      ].join("|");
 
-    // 简单哈希
-    let hash = 0;
-    for (let i = 0; i < fingerprint.length; i++) {
-      const char = fingerprint.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // 转换为32位整数
+      // 简单哈希
+      let hash = 0;
+      for (let i = 0; i < fingerprint.length; i++) {
+        const char = fingerprint.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // 转换为32位整数
+      }
+      return Math.abs(hash).toString(36);
     }
-    return Math.abs(hash).toString(36);
   };
 
   // 开始试用
   const startTrial = async () => {
-    const deviceFingerprint = await generateDeviceFingerprint();
+    // 使用 FingerprintJS 的 visitorId 作为设备指纹
+    let deviceFingerprint = fpHash;
+    if (!deviceFingerprint) {
+      // 如果 fpHash 还没准备好，手动生成
+      deviceFingerprint = await generateDeviceFingerprint();
+    }
+    
     const startDate = new Date().toISOString();
 
     const trialData = {
@@ -246,7 +265,8 @@ export const Main = ({ className, filename }: MainProps) => {
       "deviceFingerprint",
     ]);
 
-    let deviceFingerprint = storage.deviceFingerprint;
+    // 优先使用 FingerprintJS 的 visitorId
+    let deviceFingerprint = fpHash || storage.deviceFingerprint;
     if (!deviceFingerprint) {
       deviceFingerprint = await generateDeviceFingerprint();
       await browser.storage.local.set({ deviceFingerprint });
@@ -294,6 +314,21 @@ export const Main = ({ className, filename }: MainProps) => {
 
     return daysLeft > 0;
   };
+
+  // create and set fingerprint as soon as component mounts
+  useEffect(() => {
+    const setFp = async () => {
+      try {
+        const fp = await FingerprintJS.load();
+        const { visitorId } = await fp.get();
+        setFpHash(visitorId);
+      } catch (error) {
+        console.warn('Failed to load FingerprintJS:', error);
+      }
+    };
+
+    setFp();
+  }, []);
 
   useEffect(() => {
     const fetchPremium = async () => {

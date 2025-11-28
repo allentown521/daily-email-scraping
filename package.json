@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@fingerprintjs/fingerprintjs": "^5.0.1",
     "@hookform/resolvers": "^5.0.1",
     "@openpanel/web": "^1.0.1",
     "@radix-ui/react-avatar": "^1.1.4",
