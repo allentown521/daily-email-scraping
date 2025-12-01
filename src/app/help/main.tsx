@@ -38,9 +38,9 @@ const Help = () => {
     },
     {
       number: 3,
-      title: "Open Product Email Scrap",
+      title: "Open Product Hunt Email Scrap",
       description:
-        "Click the Product Email Scrap icon or open it from the sidebar",
+        "Click the Product Hunt Email Scrap icon or open it from the sidebar",
       details: (
         <p>
           This will open the main interface for selecting websites to scrape
@@ -181,6 +181,11 @@ const Help = () => {
             Important Notes
           </h3>
           <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
+            <li>
+              Extensions automatically open the web page until the crawl is
+              complete, so you should always run the extension in a fixed
+              browser instance to avoid affecting normal use.
+            </li>
             <li>Keep your browser in foreground during the scraping process</li>
             <li>
               Clear existing email list before starting new scraping session
