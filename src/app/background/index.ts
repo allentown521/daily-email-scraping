@@ -1,7 +1,7 @@
 import { StorageKey, getStorage } from "@/lib/storage";
 import { betterAuth } from "@/lib/supabase";
 import { Message, onMessage } from "~/lib/messaging";
-import { browser, defineBackground } from "#imports";
+import { browser, defineBackground, storage } from "#imports";
 
 const main = () => {
   console.log(
@@ -48,6 +48,19 @@ browser.alarms.onAlarm.addListener((alarm) => {
     const tabId = Number.parseInt(alarm.name.split("_")[1]);
     if (tabId) {
       browser.tabs.remove(tabId);
+    }
+  }
+});
+
+browser.runtime.onInstalled.addListener(async ({ reason }) => {
+  // new install
+  if (reason === "install") {
+    if (!(await storage.getItem("sync:hasInstructionsShown"))) {
+      browser.tabs.create({
+        url: browser.runtime.getURL("/help.html"),
+        active: true,
+      });
+      storage.setItem("sync:hasInstructionsShown", true);
     }
   }
 });
