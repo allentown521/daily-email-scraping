@@ -2,7 +2,7 @@ import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
-import { scraperEnabled } from "@/lib/utils";
+import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
   matches: ["https://www.tinylaunch.com/"],
@@ -12,6 +12,9 @@ export default defineContentScript({
   async main(ctx) {
     console.log("Content script is running on tinylaunch.");
     if (!(await scraperEnabled())) {
+      return;
+    }
+    if (!(await isPurchasedOrTrial())) {
       return;
     }
     const urls = [];

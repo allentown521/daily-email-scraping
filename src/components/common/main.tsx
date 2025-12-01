@@ -7,7 +7,7 @@ import {
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
-import { cn, scraperEnabled } from "~/lib/utils";
+import { checkIsInTrial, cn, scraperEnabled } from "~/lib/utils";
 import { Button } from "../ui/Button";
 import {
   Card,
@@ -59,9 +59,8 @@ export const Main = ({ className, filename }: MainProps) => {
   const [trialInfo, setTrialInfo] = useState<{
     isTrial: boolean;
     daysLeft: number;
-    trialStartDate: string | null;
     hasStarted: boolean;
-  }>({ isTrial: false, daysLeft: 0, trialStartDate: null, hasStarted: false });
+  }>({ isTrial: false, daysLeft: 0, hasStarted: false });
 
   const [fpHash, setFpHash] = useState("");
   const [isContentScriptEnabled, setIsContentScriptEnabled] = useState(true); // 总开关，默认打开
@@ -273,26 +272,17 @@ export const Main = ({ className, filename }: MainProps) => {
         return;
       }
 
-      const startDate = new Date().toISOString();
+      const result = await response.json();
+      const contactId = result.id; // 获取返回的ID
 
-      const trialData = {
-        deviceFingerprint,
-        startDate,
-        hasStarted: true,
-      };
-
+      // 只存储contactId用于后续检查，不存储试用状态
       await browser.storage.local.set({
         deviceFingerprint,
-        trialInfo: trialData,
+        contactId,
       });
 
-      // 更新状态
-      setTrialInfo({
-        isTrial: true,
-        daysLeft: 3,
-        trialStartDate: startDate,
-        hasStarted: true,
-      });
+      // 试用开始后立即检查状态
+      await checkTrialStatus();
     } catch (error) {
       console.error("Error starting trial:", error);
       alert(
@@ -303,59 +293,15 @@ export const Main = ({ className, filename }: MainProps) => {
 
   // 检查试用状态
   const checkTrialStatus = async () => {
-    const storage = await browser.storage.local.get([
-      "trialInfo",
-      "deviceFingerprint",
-    ]);
-
-    // 优先使用 FingerprintJS 的 visitorId
-    let deviceFingerprint = fpHash || storage.deviceFingerprint;
-    if (!deviceFingerprint) {
-      deviceFingerprint = await generateDeviceFingerprint();
-      await browser.storage.local.set({ deviceFingerprint });
-    }
-
-    const trialData = storage.trialInfo;
-
-    if (!trialData || !trialData.hasStarted) {
-      // 试用未开始
-      setTrialInfo({
-        isTrial: false,
-        daysLeft: 0,
-        trialStartDate: null,
-        hasStarted: false,
-      });
-      return false;
-    }
-
-    // 检查设备指纹是否匹配（防止复制存储）
-    if (trialData.deviceFingerprint !== deviceFingerprint) {
-      // 设备不匹配，重置试用状态
-      await browser.storage.local.remove(["trialInfo"]);
-      setTrialInfo({
-        isTrial: false,
-        daysLeft: 0,
-        trialStartDate: null,
-        hasStarted: false,
-      });
-      return false;
-    }
-
-    const startDate = new Date(trialData.startDate);
-    const now = new Date();
-    const daysDiff = Math.floor(
-      (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const daysLeft = Math.max(0, 3 - daysDiff);
+    const { isInTrial, daysLeft, hasStarted } = await checkIsInTrial();
 
     setTrialInfo({
-      isTrial: daysLeft > 0,
-      daysLeft,
-      trialStartDate: trialData.startDate,
-      hasStarted: true,
+      isTrial: isInTrial,
+      daysLeft: daysLeft,
+      hasStarted: hasStarted,
     });
 
-    return daysLeft > 0;
+    return isInTrial;
   };
 
   // create and set fingerprint as soon as component mounts
@@ -585,7 +531,7 @@ export const Main = ({ className, filename }: MainProps) => {
           )}
         >
           {!isContentScriptEnabled
-            ? "⚡ Content Scripts Disabled"
+            ? "⚡ Email Scraper Disabled"
             : hasPurchased
             ? "Start Scraping"
             : trialInfo.isTrial
