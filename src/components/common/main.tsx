@@ -7,7 +7,7 @@ import {
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
-import { cn } from "~/lib/utils";
+import { cn, scraperEnabled } from "~/lib/utils";
 import { Button } from "../ui/Button";
 import {
   Card,
@@ -64,6 +64,8 @@ export const Main = ({ className, filename }: MainProps) => {
   }>({ isTrial: false, daysLeft: 0, trialStartDate: null, hasStarted: false });
 
   const [fpHash, setFpHash] = useState("");
+  const [isContentScriptEnabled, setIsContentScriptEnabled] = useState(true); // 总开关，默认打开
+  const [showTooltip, setShowTooltip] = useState(false); // 控制tooltip显示
   const handleGroupCheckboxChange = (group: string) => {
     const newGroupSelection = {
       ...groupSelection,
@@ -186,6 +188,14 @@ export const Main = ({ className, filename }: MainProps) => {
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  // 处理总开关变化
+  const handleContentScriptToggle = async () => {
+    const newState = !isContentScriptEnabled;
+    setIsContentScriptEnabled(newState);
+    // 保存状态到浏览器存储
+    await browser.storage.local.set({ contentScriptEnabled: newState });
   };
 
   // 生成设备指纹
@@ -378,7 +388,25 @@ export const Main = ({ className, filename }: MainProps) => {
     fetchPremium();
   }, []);
 
+  // 加载总开关状态
+  useEffect(() => {
+    const loadContentScriptState = async () => {
+      const enabled = await scraperEnabled();
+      setIsContentScriptEnabled(enabled);
+    };
+
+    loadContentScriptState();
+  }, []);
+
   const handleStartScraping = () => {
+    // 检查内容脚本总开关
+    if (!isContentScriptEnabled) {
+      alert(
+        "Content scripts are disabled. Please enable the main switch first."
+      );
+      return;
+    }
+
     // 检查是否是会员或在试用期内
     if (!hasPurchased && !trialInfo.isTrial) {
       alert("Please purchase a premium license to use this feature.");
@@ -440,17 +468,75 @@ export const Main = ({ className, filename }: MainProps) => {
       )}
     >
       <div className="w-full max-w-md">
+        {/* 总开关 */}
+        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div
+                className={cn(
+                  "w-3 h-3 rounded-full",
+                  isContentScriptEnabled ? "bg-green-500" : "bg-red-500"
+                )}
+              ></div>
+              <div className="flex items-center space-x-2">
+                <h3 className="font-semibold text-gray-900">Enable Scraper</h3>
+                {/* 帮助图标和tooltip */}
+                <div className="relative">
+                  <button
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                    className="flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  >
+                    <span className="text-xs font-medium">?</span>
+                  </button>
+                  {showTooltip && (
+                    <div className="absolute left-1/2 top-6 z-50 w-50 -translate-x-1/2 rounded-lg bg-gray-900 p-3 text-white shadow-lg">
+                      <div className="text-sm">
+                        Extensions perform automated actions on specified pages,
+                        such as auto‑scrolling and automatically opening product
+                        links. These features can be temporarily disabled if you
+                        don’t need them.
+                      </div>
+                      <div className="absolute left-1/2 -top-2 -translate-x-1/2 h-0 w-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleContentScriptToggle}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                isContentScriptEnabled ? "bg-primary" : "bg-gray-300"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  isContentScriptEnabled ? "translate-x-6" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
         <h2 className="mb-4 text-center text-xl font-bold">
           Select websites to scrape
         </h2>
-        <div className="grid grid-cols-2 gap-2">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2",
+            !isContentScriptEnabled && "opacity-50 pointer-events-none"
+          )}
+        >
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
               id="daily"
               checked={groupSelection.daily}
               onChange={() => handleGroupCheckboxChange("daily")}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              disabled={!isContentScriptEnabled}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <label htmlFor="daily" className="text-sm font-medium">
               Daily
@@ -462,7 +548,8 @@ export const Main = ({ className, filename }: MainProps) => {
               id="weekly"
               checked={groupSelection.weekly}
               onChange={() => handleGroupCheckboxChange("weekly")}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              disabled={!isContentScriptEnabled}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <label htmlFor="weekly" className="text-sm font-medium">
               Weekly
@@ -476,7 +563,8 @@ export const Main = ({ className, filename }: MainProps) => {
                 id={site.id}
                 checked={selectedSites[site.id]}
                 onChange={() => handleCheckboxChange(site.id)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                disabled={!isContentScriptEnabled}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <label htmlFor={site.id} className="text-sm font-medium">
                 {site.name}
@@ -486,15 +574,19 @@ export const Main = ({ className, filename }: MainProps) => {
         </div>
         <Button
           onClick={handleStartScraping}
-          disabled={!hasPurchased && !trialInfo.isTrial}
+          disabled={
+            !isContentScriptEnabled || (!hasPurchased && !trialInfo.isTrial)
+          }
           className={cn(
             "mt-6 w-full rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-            hasPurchased || trialInfo.isTrial
+            isContentScriptEnabled && (hasPurchased || trialInfo.isTrial)
               ? "cursor-pointer bg-primary text-white hover:bg-primary/90"
               : "cursor-not-allowed bg-gray-300 text-gray-500"
           )}
         >
-          {hasPurchased
+          {!isContentScriptEnabled
+            ? "⚡ Content Scripts Disabled"
+            : hasPurchased
             ? "Start Scraping"
             : trialInfo.isTrial
             ? `🎯 Start Scraping (${trialInfo.daysLeft} days left)`

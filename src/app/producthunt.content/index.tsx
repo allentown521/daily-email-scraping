@@ -2,6 +2,7 @@ import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
+import { scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
   matches: ["https://www.producthunt.com/leaderboard/daily/*/*/*/*"],
@@ -10,7 +11,9 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log("Content script is running on producthunt.");
-
+    if (!(await scraperEnabled())) {
+      return;
+    }
     const urls = [];
     let pageCount = 0;
     let previousHeight = 0;
@@ -174,12 +177,7 @@ export default defineContentScript({
     };
 
     // 初始化状态面板
-    updateStatus(
-      "running",
-      0,
-      "0%",
-      "Starting scroll task..."
-    );
+    updateStatus("running", 0, "0%", "Starting scroll task...");
 
     // 检查页面可见性并提醒
     const checkVisibility = () => {

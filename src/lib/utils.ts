@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { browser } from "wxt/browser";
 import type { User } from "~/types";
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
@@ -20,4 +21,9 @@ export const getAvatar = (user: User) => {
   const avatar: unknown = user.image;
 
   return typeof avatar === "string" ? avatar : undefined;
+};
+
+export const scraperEnabled = async () => {
+  const storage = await browser.storage.local.get(["contentScriptEnabled"]);
+  return storage.contentScriptEnabled === true;
 };

@@ -1,10 +1,8 @@
-import { Button } from "@/components/ui/button";
-import ReactDOM from "react-dom/client";
-import { browser } from "wxt/browser";
-import { createShadowRootUi, defineContentScript } from "#imports";
+import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
+import { scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
   matches: ["https://fazier.com/leaderboard/daily/*/*/*"],
@@ -13,7 +11,9 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log("Content script is running on fazier.");
-
+    if (!(await scraperEnabled())) {
+      return;
+    }
     const urls = [];
 
     document.querySelectorAll("a").forEach((a) => {

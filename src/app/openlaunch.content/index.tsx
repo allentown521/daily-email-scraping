@@ -2,6 +2,7 @@ import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
+import { scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
   matches: ["https://open-launch.com/trending?filter=today"],
@@ -10,7 +11,9 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log("Content script is running on openlaunch.");
-
+    if (!(await scraperEnabled())) {
+      return;
+    }
     const urls = [];
 
     document.querySelectorAll("a").forEach((a) => {

@@ -2,6 +2,7 @@ import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
+import { scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
   matches: ["https://www.tinylaunch.com/"],
@@ -10,26 +11,32 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log("Content script is running on tinylaunch.");
-
+    if (!(await scraperEnabled())) {
+      return;
+    }
     const urls = [];
-    
+
     // 创建持续显示的状态面板
     let statusPanel = null;
-    let statusPanelId = 'tinylaunch-status-panel-' + Date.now();
-    
+    const statusPanelId = "tinylaunch-status-panel-" + Date.now();
+
     const createStatusPanel = () => {
       // 检查是否已存在且在 DOM 中
-      if (statusPanel && statusPanel.parentNode && document.body.contains(statusPanel)) {
+      if (
+        statusPanel &&
+        statusPanel.parentNode &&
+        document.body.contains(statusPanel)
+      ) {
         return statusPanel;
       }
-      
+
       // 移除可能存在的旧面板
       const existingPanel = document.getElementById(statusPanelId);
       if (existingPanel) {
         existingPanel.remove();
       }
-      
-      const panel = document.createElement('div');
+
+      const panel = document.createElement("div");
       statusPanel = panel;
       panel.id = statusPanelId; // 设置唯一 ID
       panel.style.cssText = `
@@ -50,17 +57,20 @@ export default defineContentScript({
         pointer-events: none !important;
         user-select: none !important;
       `;
-      
+
       // 强制添加到 document.body
       const addToBody = () => {
         if (document.body) {
           document.body.appendChild(panel);
-          console.log("Status panel created and attached to body with ID:", statusPanelId);
-          
+          console.log(
+            "Status panel created and attached to body with ID:",
+            statusPanelId
+          );
+
           // 添加一个 MutationObserver 来监控面板是否被意外移除
           const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
-              if (mutation.type === 'childList') {
+              if (mutation.type === "childList") {
                 mutation.removedNodes.forEach((removedNode) => {
                   if (removedNode === panel) {
                     console.log("Panel was removed, re-adding...");
@@ -74,23 +84,22 @@ export default defineContentScript({
               }
             });
           });
-          
+
           observer.observe(document.body, { childList: true, subtree: true });
-          
         } else {
           // 如果 body 还没准备好，等待一下再试
           setTimeout(addToBody, 100);
         }
       };
-      
+
       addToBody();
       return panel;
     };
-    
+
     const updateStatus = (status, itemCount, extra = "") => {
       // 总是重新创建面板以确保显示
       const panel = createStatusPanel();
-      
+
       // 再次确认面板在 DOM 中
       setTimeout(() => {
         if (!document.body.contains(panel)) {
@@ -100,22 +109,22 @@ export default defineContentScript({
           document.body.appendChild(panel);
         }
       }, 50);
-      
+
       const statusColors = {
         running: "#4CAF50",
         completed: "#2196F3",
         error: "#f44336",
       };
-      
+
       const statusIcons = {
         running: "🔄",
         completed: "✅",
         error: "❌",
       };
-      
+
       const borderColor = statusColors[status] || "#4CAF50";
       const icon = statusIcons[status] || "🔄";
-      
+
       panel.style.borderLeftColor = borderColor + " !important";
       panel.innerHTML = `
         <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -139,12 +148,10 @@ export default defineContentScript({
           }
         </div>
       `;
-      
-      console.log(
-        `Status updated: ${status}, items: ${itemCount}`
-      );
+
+      console.log(`Status updated: ${status}, items: ${itemCount}`);
     };
-    
+
     const removeStatusPanel = () => {
       if (statusPanel && statusPanel.parentNode) {
         statusPanel.parentNode.removeChild(statusPanel);
@@ -164,31 +171,40 @@ export default defineContentScript({
     });
 
     console.log(`Total URLs collected: ${urls.length}`);
-    
+
     // 更新为完成状态
-    updateStatus("completed", urls.length, 
-      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`);
-    
+    updateStatus(
+      "completed",
+      urls.length,
+      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`
+    );
+
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    
+
     let openedTabsCount = 0;
     for (const url of urls) {
       await sendMessage(Message.OPEN_TAB, `${url}`);
       openedTabsCount++;
-      
+
       // 更新状态，显示已打开的标签页数量
-      updateStatus("completed", urls.length, 
-        `🎉 Opening tabs...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`);
-      
+      updateStatus(
+        "completed",
+        urls.length,
+        `🎉 Opening tabs...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+      );
+
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
 
     console.log(`All ${urls.length} tabs have been opened.`);
-    
+
     // 最后更新状态
-    updateStatus("completed", urls.length, 
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`);
-    
+    updateStatus(
+      "completed",
+      urls.length,
+      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`
+    );
+
     // 5秒后移除状态面板
     setTimeout(() => {
       removeStatusPanel();

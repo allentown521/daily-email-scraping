@@ -2,6 +2,7 @@ import { defineContentScript } from "#imports";
 
 import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
+import { scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
   matches: ["https://theresanaiforthat.com/period/*"],
@@ -10,7 +11,9 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log("Content script is running on theresanaiforthat.");
-
+    if (!(await scraperEnabled())) {
+      return;
+    }
     const urls = [];
 
     document.querySelectorAll("li").forEach((a) => {
