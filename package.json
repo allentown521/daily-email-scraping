@@ -3,7 +3,7 @@
   "version": "1.0.5",
   "description": "Open source browser extension starter kit.",
   "license": "MIT",
-  "author": "Bartosz Zagrodzki",
+  "author": "AllenTown",
   "scripts": {
     "build": "run-p build:chrome build:firefox",
     "build:chrome": "wxt zip",
