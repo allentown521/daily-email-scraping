@@ -1,5 +1,6 @@
 import { StorageKey, getStorage } from "@/lib/storage";
 import { betterAuth } from "@/lib/supabase";
+import { changeLog } from "@/utils/notify";
 import { Message, onMessage } from "~/lib/messaging";
 import { browser, defineBackground, storage } from "#imports";
 
@@ -62,6 +63,19 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
       });
       storage.setItem("sync:hasInstructionsShown", true);
     }
+  } else if (reason === "update") {
+    const newVersion = chrome.runtime.getManifest().version;
+
+    if (newVersion === changeLog.notifyVersion) {
+      chrome.notifications.create(`update_${newVersion}`, {
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icons/128.png"), // wit 构建时通过icon.png生成的
+        title: "Product Hunt Email Scraper ChangeLog",
+        message: changeLog.changeLog.join("\n"),
+      });
+    }
+
+    console.log("extension updated");
   }
 });
 
