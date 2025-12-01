@@ -175,9 +175,9 @@ export default defineContentScript({
 
     console.log(`Total URLs collected: ${urls.length}`);
 
-    // 更新为完成状态
+    // 更新为准备打开状态
     updateStatus(
-      "completed",
+      "running",
       urls.length,
       `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`
     );
@@ -189,11 +189,11 @@ export default defineContentScript({
       await sendMessage(Message.OPEN_TAB, `${url}`);
       openedTabsCount++;
 
-      // 更新状态，显示已打开的标签页数量
+      // 更新状态，显示正在打开的标签页数量
       updateStatus(
-        "completed",
+        "running",
         urls.length,
-        `🎉 Opening tabs...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -201,7 +201,7 @@ export default defineContentScript({
 
     console.log(`All ${urls.length} tabs have been opened.`);
 
-    // 最后更新状态
+    // 最后更新为完成状态
     updateStatus(
       "completed",
       urls.length,

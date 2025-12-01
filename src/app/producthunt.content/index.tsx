@@ -308,12 +308,12 @@ export default defineContentScript({
       await sendMessage(Message.OPEN_TAB, `${url}`);
       openedTabsCount++;
 
-      // 更新状态，显示已打开的标签页数量
+      // 更新状态，显示正在打开的标签页数量
       updateStatus(
-        "completed",
+        "running",
         urls.length,
         "100%",
-        `🎉 Opening tabs...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
