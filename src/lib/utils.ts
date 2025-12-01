@@ -25,5 +25,5 @@ export const getAvatar = (user: User) => {
 
 export const scraperEnabled = async () => {
   const storage = await browser.storage.local.get(["contentScriptEnabled"]);
-  return storage.contentScriptEnabled === true;
+  return storage.contentScriptEnabled !== false;
 };
