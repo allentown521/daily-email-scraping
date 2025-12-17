@@ -91,7 +91,7 @@ export const Main = ({ className, filename }: MainProps) => {
         openhunts: newGroupSelection.daily,
         launchitx: newGroupSelection.daily,
         peerpush: newGroupSelection.daily,
-        nxgntools: newGroupSelection.daily,
+        nxgntools: newGroupSelection.weekly,
       }));
     }
   };
