@@ -91,6 +91,7 @@ export const Main = ({ className, filename }: MainProps) => {
         openhunts: newGroupSelection.daily,
         launchitx: newGroupSelection.daily,
         peerpush: newGroupSelection.daily,
+        nxgntools: newGroupSelection.daily,
       }));
     }
   };
@@ -185,6 +186,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "peerpush",
       name: "peerpush",
       url: "https://peerpush.net/?view=live",
+    },
+    {
+      id: "nxgntools",
+      name: "nxgntools",
+      url: "https://www.nxgntools.com/launching",
     },
   ];
 
