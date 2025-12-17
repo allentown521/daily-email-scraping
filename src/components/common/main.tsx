@@ -90,6 +90,7 @@ export const Main = ({ className, filename }: MainProps) => {
         auraplusplus: newGroupSelection.daily,
         openhunts: newGroupSelection.daily,
         launchitx: newGroupSelection.daily,
+        peerpush: newGroupSelection.daily,
       }));
     }
   };
@@ -179,6 +180,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "launchitx",
       name: "launchitx",
       url: "https://launchitx.com/trending?filter=today",
+    },
+    {
+      id: "peerpush",
+      name: "peerpush",
+      url: "https://peerpush.net/?view=live",
     },
   ];
 
