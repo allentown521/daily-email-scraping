@@ -26,6 +26,7 @@ interface SiteOption {
   id: string;
   name: string;
   url: string | ((date: Date) => string);
+  openInSingleBrowser?: boolean;
 }
 
 export const Main = ({ className, filename }: MainProps) => {
@@ -92,6 +93,7 @@ export const Main = ({ className, filename }: MainProps) => {
         launchitx: newGroupSelection.daily,
         peerpush: newGroupSelection.daily,
         nxgntools: newGroupSelection.weekly,
+        launchigniter: newGroupSelection.weekly,
       }));
     }
   };
@@ -185,6 +187,8 @@ export const Main = ({ className, filename }: MainProps) => {
     {
       id: "peerpush",
       name: "peerpush",
+      openInSingleBrowser: true,
+
       url: "https://peerpush.net/?view=live",
     },
     {
@@ -192,6 +196,12 @@ export const Main = ({ className, filename }: MainProps) => {
       name: "nxgntools",
       url: "https://www.nxgntools.com/launching",
     },
+    /*     {
+      id: "launchigniter",
+      openInSingleBrowser: true,
+      name: "launchigniter",
+      url: "https://launchigniter.com/",
+    }, */
   ];
 
   const handleCheckboxChange = (id: string) => {
@@ -382,7 +392,11 @@ export const Main = ({ className, filename }: MainProps) => {
     siteOptions.forEach((site) => {
       if (selectedSites[site.id]) {
         const url = typeof site.url === "function" ? site.url(today) : site.url;
-        browser.tabs.create({ url });
+        if (site.openInSingleBrowser) {
+          browser.windows.create({ url });
+        } else {
+          browser.tabs.create({ url });
+        }
       }
     });
   };

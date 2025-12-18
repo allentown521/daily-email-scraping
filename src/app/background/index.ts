@@ -86,4 +86,15 @@ onMessage(Message.OPEN_TAB, (meessage) => {
   });
 });
 
+onMessage(Message.OPEN_TAB_AND_RETURN, async () => {
+  // 获取当前活跃标签页
+  const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (currentTab?.id) {
+    // 等待一段时间后返回原标签页（假设页面已经跳转）
+    setTimeout(() => {
+      browser.tabs.update(currentTab.id, { active: true });
+    }, 3000);
+  }
+});
+
 export default defineBackground(main);
