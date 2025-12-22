@@ -78,6 +78,8 @@ export const Main = ({ className, filename }: MainProps) => {
         ...prev,
         peerlist: newGroupSelection.weekly,
         tinylaunch: newGroupSelection.weekly,
+        nxgntools: newGroupSelection.weekly,
+        // launchigniter: newGroupSelection.weekly,
       }));
     } else if (group === "daily") {
       setSelectedSites((prev) => ({
@@ -91,9 +93,7 @@ export const Main = ({ className, filename }: MainProps) => {
         auraplusplus: newGroupSelection.daily,
         openhunts: newGroupSelection.daily,
         launchitx: newGroupSelection.daily,
-        peerpush: newGroupSelection.daily,
-        nxgntools: newGroupSelection.weekly,
-        launchigniter: newGroupSelection.weekly,
+        // peerpush: newGroupSelection.daily,
       }));
     }
   };
