@@ -153,13 +153,20 @@ export const Main = ({ className, filename }: MainProps) => {
       url: (date: Date) => {
         const year = date.getFullYear();
 
-        // Calculate which week of the year it is
-        const firstDayOfYear = new Date(year, 0, 1);
-        const pastDaysOfYear =
-          (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-        const week = Math.ceil(
-          (pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7
-        );
+        // Calculate which week of the year it is using ISO 8601 standard
+        const getISOWeek = (d: Date): number => {
+          const target = new Date(d.valueOf());
+          const dayNr = (d.getDay() + 6) % 7; // Make Monday = 0, Sunday = 6
+          target.setDate(target.getDate() - dayNr + 3);
+          const firstThursday = target.valueOf();
+          target.setMonth(0, 1);
+          if (target.getDay() !== 4) {
+            target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+          }
+          return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000); // 604800000 = 7 * 24 * 3600 * 1000
+        };
+
+        const week = getISOWeek(date);
 
         return `https://peerlist.io/launchpad/${year}/week/${week}`;
       },
