@@ -48,7 +48,7 @@ export const Main = ({ className, filename }: MainProps) => {
     {
       weekly: false,
       daily: false,
-    }
+    },
   );
 
   const [hasPurchased, setHasPurchased] = useState(false); // 新增购买状态
@@ -236,7 +236,7 @@ export const Main = ({ className, filename }: MainProps) => {
     } catch (error) {
       console.warn(
         "FingerprintJS failed, falling back to manual fingerprint:",
-        error
+        error,
       );
 
       // 降级到手动指纹生成
@@ -282,19 +282,19 @@ export const Main = ({ className, filename }: MainProps) => {
       const email = `${deviceFingerprint}@producthunt.scaper.com`;
       const response = await fetch(
         `https://api.focusapps.app/free-trial?email=${encodeURIComponent(
-          email
-        )}`
+          email,
+        )}`,
       );
 
       if (!response.ok) {
         if (response.status === 409) {
           // 如果返回是409，提示用户试用机会已用
           alert(
-            "Trial opportunity has been used, please purchase a premium license"
+            "Trial opportunity has been used, please purchase a premium license",
           );
         } else {
           alert(
-            "An error occurred while starting the trial, please try again later"
+            "An error occurred while starting the trial, please try again later",
           );
         }
 
@@ -315,7 +315,7 @@ export const Main = ({ className, filename }: MainProps) => {
     } catch (error) {
       console.error("Error starting trial:", error);
       alert(
-        "An error occurred while starting the trial, please try again later"
+        "An error occurred while starting the trial, please try again later",
       );
     }
   };
@@ -377,7 +377,7 @@ export const Main = ({ className, filename }: MainProps) => {
     // 检查内容脚本总开关
     if (!isContentScriptEnabled) {
       alert(
-        "Content scripts are disabled. Please enable the main switch first."
+        "Content scripts are disabled. Please enable the main switch first.",
       );
       return;
     }
@@ -390,7 +390,7 @@ export const Main = ({ className, filename }: MainProps) => {
 
     if (trialInfo.isTrial && !hasPurchased) {
       alert(
-        `🎯 Trial Mode: ${trialInfo.daysLeft} days remaining. Enjoy your free trial!`
+        `🎯 Trial Mode: ${trialInfo.daysLeft} days remaining. Enjoy your free trial!`,
       );
     }
 
@@ -410,7 +410,7 @@ export const Main = ({ className, filename }: MainProps) => {
 
   async function activateLicense() {
     const key = prompt(
-      "Please enter your license key from your Lemonsqueezy order email"
+      "Please enter your license key from your Lemonsqueezy order email",
     );
     if (key) {
       setActivateError("");
@@ -443,7 +443,7 @@ export const Main = ({ className, filename }: MainProps) => {
     <main
       className={cn(
         "flex flex-col items-center justify-center gap-4 p-6",
-        className
+        className,
       )}
     >
       <div className="w-full max-w-md">
@@ -454,7 +454,7 @@ export const Main = ({ className, filename }: MainProps) => {
               <div
                 className={cn(
                   "w-3 h-3 rounded-full",
-                  isContentScriptEnabled ? "bg-green-500" : "bg-red-500"
+                  isContentScriptEnabled ? "bg-green-500" : "bg-red-500",
                 )}
               ></div>
               <div className="flex items-center space-x-2">
@@ -486,13 +486,13 @@ export const Main = ({ className, filename }: MainProps) => {
               onClick={handleContentScriptToggle}
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-                isContentScriptEnabled ? "bg-primary" : "bg-gray-300"
+                isContentScriptEnabled ? "bg-primary" : "bg-gray-300",
               )}
             >
               <span
                 className={cn(
                   "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                  isContentScriptEnabled ? "translate-x-6" : "translate-x-1"
+                  isContentScriptEnabled ? "translate-x-6" : "translate-x-1",
                 )}
               />
             </button>
@@ -505,7 +505,7 @@ export const Main = ({ className, filename }: MainProps) => {
         <div
           className={cn(
             "grid grid-cols-2 gap-2",
-            !isContentScriptEnabled && "opacity-50 pointer-events-none"
+            !isContentScriptEnabled && "opacity-50 pointer-events-none",
           )}
         >
           <div className="flex items-center space-x-2">
@@ -560,16 +560,16 @@ export const Main = ({ className, filename }: MainProps) => {
             "mt-6 w-full rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
             isContentScriptEnabled && (hasPurchased || trialInfo.isTrial)
               ? "cursor-pointer bg-primary text-white hover:bg-primary/90"
-              : "cursor-not-allowed bg-gray-300 text-gray-500"
+              : "cursor-not-allowed bg-gray-300 text-gray-500",
           )}
         >
           {!isContentScriptEnabled
             ? "⚡ Email Scraper Disabled"
             : hasPurchased
-            ? "Start Scraping"
-            : trialInfo.isTrial
-            ? `🎯 Start Scraping (${trialInfo.daysLeft} days left)`
-            : "🔒 Premium Required"}
+              ? "Start Scraping"
+              : trialInfo.isTrial
+                ? `🎯 Start Scraping (${trialInfo.daysLeft} days left)`
+                : "🔒 Premium Required"}
         </Button>
         <div id="purchase" className="my-8">
           <div className="mb-6 text-center">
@@ -649,7 +649,7 @@ export const Main = ({ className, filename }: MainProps) => {
                 licenseType: BuyTypeEnum.ONETIME,
                 devices: 10,
                 purchaseUrl:
-                  "https://marinara.lemonsqueezy.com/buy/ebe3b512-fb90-4ae4-8a04-7f1962a5b5cf",
+                  "https://focusapps.lemonsqueezy.com/checkout/buy/ebe3b512-fb90-4ae4-8a04-7f1962a5b5cf",
                 features: [
                   "Unlimited usage",
                   "Up to 10 devices",
@@ -662,7 +662,7 @@ export const Main = ({ className, filename }: MainProps) => {
                   "relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-105",
                   hasPurchased && card.licenseType === licenseType
                     ? "border-green-500 bg-green-50"
-                    : "border-gray-200 bg-white"
+                    : "border-gray-200 bg-white",
                 )}
                 key={index}
               >

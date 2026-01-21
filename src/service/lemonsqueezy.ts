@@ -27,11 +27,10 @@ async function activateLicense(key: string, instanceName: string) {
   console.log("resp", resp);
   if (!resp.activated) {
     throw new Error(resp.error);
-  } else {
-    const validateResp = await validateLicense(key, resp.instance.id);
-    if (!validateResp.valid) {
-      throw new Error(validateResp.error);
-    }
+  }
+  const validateResp = await validateLicense(key, resp.instance.id);
+  if (!validateResp.valid) {
+    throw new Error(validateResp.error);
   }
   return { instanceId: resp.instance.id, buyType: resp.meta.product_id };
 }
@@ -52,20 +51,34 @@ type LicenseKey = {
   error?: string;
 };
 
+type LicenseResponse = {
+  valid: boolean;
+  type: string;
+  error?: string;
+  license_key: {
+    status: string;
+  };
+  meta: {
+    store_id: number;
+    product_id: number;
+  };
+  status_formatted?: string;
+};
+
 async function validateLicense(
   key: string,
   instanceId: string,
 ): Promise<LicenseKey> {
-  const resp = await ofetch(
+  const url = new URL(
     "https://api.focusapps.app/lemonsqueezy/licenses/validate",
-    {
-      method: "POST",
-      params: {
-        license_key: key,
-        instance_id: instanceId,
-      },
-    },
   );
+  url.searchParams.append("license_key", key);
+  url.searchParams.append("instance_id", instanceId);
+
+  // 这里用fetch是因为要区分404和网络错误，404代表key是不存在的
+  const response = await fetch(url.toString(), { method: "POST" });
+  const resp = (await response.json()) as LicenseResponse;
+
   if (resp.valid) {
     if (resp.license_key.status === KEY_STATUSES.ACTIVE) {
       if (resp.meta.store_id !== STORE_ID) {
@@ -74,12 +87,10 @@ async function validateLicense(
           error: "Invalid license key",
           type: UNKNOWN,
         };
-      } else {
-        return { valid: true, type: getLicenseType(resp.meta.product_id) };
       }
-    } else {
-      return { valid: false, error: resp.status_formatted, type: UNKNOWN };
+      return { valid: true, type: getLicenseType(resp.meta.product_id) };
     }
+    return { valid: false, error: resp.status_formatted, type: UNKNOWN };
   }
   return { valid: false, error: resp.error, type: UNKNOWN };
 }
