@@ -6,7 +6,7 @@ export async function decodePoeFormkey(html: string): Promise<string> {
     {
       method: "POST",
       body: { html },
-    }
+    },
   );
   return resp.formkey;
 }
@@ -21,14 +21,14 @@ type ActivateResponse =
 
 export async function activateLicense(key: string, instanceName: string) {
   return ofetch<ActivateResponse>(
-    "https://api.lemonsqueezy.com/v1/licenses/activate",
+    "https://api.focusapps.app/lemonsqueezy/licenses/activate",
     {
       method: "POST",
-      body: {
+      params: {
         license_key: key,
         instance_name: instanceName,
       },
-    }
+    },
   );
 }
 
@@ -38,7 +38,7 @@ interface Product {
 
 export async function fetchPremiumProduct() {
   return ofetch<Product>(
-    "https://us-central1-aichatone.cloudfunctions.net/premium/product"
+    "https://us-central1-aichatone.cloudfunctions.net/premium/product",
   );
 }
 
@@ -47,7 +47,7 @@ export async function createDiscount() {
     "https://us-central1-aichatone.cloudfunctions.net/premiumdiscount/create",
     {
       method: "POST",
-    }
+    },
   );
 }
 
@@ -90,18 +90,18 @@ const mailerliteAuthKey =
 
 export async function fetchVersionInfo() {
   return ofetch<VersionInfo>(
-    "https://us-central1-aichatone.cloudfunctions.net/check-update"
+    "https://us-central1-aichatone.cloudfunctions.net/check-update",
   );
 }
 
 export async function fetchNotify() {
   return ofetch<Notify>(
-    "https://us-central1-aichatone.cloudfunctions.net/check-notify"
+    "https://us-central1-aichatone.cloudfunctions.net/check-notify",
   );
 }
 
 export async function createMailerliteSubscriber(
-  params: MailerliteSubscriberCreate
+  params: MailerliteSubscriberCreate,
 ) {
   return ofetch.raw("https://connect.mailerlite.com/api/subscribers", {
     method: "POST",
@@ -126,6 +126,6 @@ export async function fetchMailerliteSubscriber(email: string) {
       headers: {
         Authorization: `Bearer ${mailerliteAuthKey}`,
       },
-    }
+    },
   );
 }

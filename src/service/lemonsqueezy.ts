@@ -37,9 +37,9 @@ async function activateLicense(key: string, instanceName: string) {
 }
 
 async function deactivateLicense(key: string, instanceId: string) {
-  await ofetch("https://api.lemonsqueezy.com/v1/licenses/deactivate", {
+  await ofetch("https://api.focusapps.app/lemonsqueezy/licenses/deactivate", {
     method: "POST",
-    body: {
+    params: {
       license_key: key,
       instance_id: instanceId,
     },
@@ -54,17 +54,17 @@ type LicenseKey = {
 
 async function validateLicense(
   key: string,
-  instanceId: string
+  instanceId: string,
 ): Promise<LicenseKey> {
   const resp = await ofetch(
-    "https://api.lemonsqueezy.com/v1/licenses/validate",
+    "https://api.focusapps.app/lemonsqueezy/licenses/validate",
     {
       method: "POST",
-      body: {
+      params: {
         license_key: key,
         instance_id: instanceId,
       },
-    }
+    },
   );
   if (resp.valid) {
     if (resp.license_key.status === KEY_STATUSES.ACTIVE) {
