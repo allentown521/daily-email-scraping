@@ -79,6 +79,7 @@ export const Main = ({ className, filename }: MainProps) => {
         peerlist: newGroupSelection.weekly,
         tinylaunch: newGroupSelection.weekly,
         nxgntools: newGroupSelection.weekly,
+        openhunts: newGroupSelection.weekly,
         // launchigniter: newGroupSelection.weekly,
       }));
     } else if (group === "daily") {
@@ -91,7 +92,6 @@ export const Main = ({ className, filename }: MainProps) => {
         openLaunch: newGroupSelection.daily,
         firsto: newGroupSelection.daily,
         auraplusplus: newGroupSelection.daily,
-        openhunts: newGroupSelection.daily,
         launchitx: newGroupSelection.daily,
         // peerpush: newGroupSelection.daily,
       }));
