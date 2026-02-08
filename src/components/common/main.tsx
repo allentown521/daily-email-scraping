@@ -80,6 +80,7 @@ export const Main = ({ className, filename }: MainProps) => {
         tinylaunch: newGroupSelection.weekly,
         nxgntools: newGroupSelection.weekly,
         openhunts: newGroupSelection.weekly,
+        foundrlist: newGroupSelection.weekly,
         // launchigniter: newGroupSelection.weekly,
       }));
     } else if (group === "daily") {
@@ -202,6 +203,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "nxgntools",
       name: "nxgntools",
       url: "https://www.nxgntools.com/launching",
+    },
+    {
+      id: "foundrlist",
+      name: "foundrlist",
+      url: "https://foundrlist.com",
     },
     /*     {
       id: "launchigniter",
