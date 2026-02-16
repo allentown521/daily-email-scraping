@@ -5,7 +5,10 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://www.tinylaunch.com/"],
+  matches: [
+    "https://www.tinylaunch.com/",
+    "https://www.tinylaunch.com/launch-archive",
+  ],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
