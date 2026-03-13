@@ -23,7 +23,7 @@ export default defineContentScript({
     let currentHeight = document.body.scrollHeight;
     let noChangeCount = 0;
     const maxNoChangeCount = 5;
-    const maxScrollAttempts = 80;
+    const maxScrollAttempts = 500;
 
     // 记录已经看到的产品数量
     let previousProductCount = 0;
@@ -76,7 +76,7 @@ export default defineContentScript({
           document.body.appendChild(panel);
           console.log(
             "Status panel created and attached to body with ID:",
-            statusPanelId
+            statusPanelId,
           );
 
           // 添加一个 MutationObserver 来监控面板是否被意外移除
@@ -116,7 +116,7 @@ export default defineContentScript({
       setTimeout(() => {
         if (!document.body.contains(panel)) {
           console.log(
-            "Panel still not in DOM after creation, forcing re-add..."
+            "Panel still not in DOM after creation, forcing re-add...",
           );
           document.body.appendChild(panel);
         }
@@ -148,10 +148,10 @@ export default defineContentScript({
               status === "running"
                 ? "Scrolling"
                 : status === "paused"
-                ? "Paused"
-                : status === "completed"
-                ? "Completed"
-                : "Error"
+                  ? "Paused"
+                  : status === "completed"
+                    ? "Completed"
+                    : "Error"
             }
           </strong>
         </div>
@@ -167,7 +167,7 @@ export default defineContentScript({
       `;
 
       console.log(
-        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`
+        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`,
       );
     };
 
@@ -189,7 +189,7 @@ export default defineContentScript({
           "paused",
           urls.length,
           `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return"
+          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return",
         );
         return false;
       }
@@ -209,7 +209,7 @@ export default defineContentScript({
           "running",
           urls.length,
           `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "✨ Resuming scroll..."
+          "✨ Resuming scroll...",
         );
       }
 
@@ -224,7 +224,7 @@ export default defineContentScript({
 
       const scrollTarget = Math.min(
         scrollPosition + scrollStep,
-        document.body.scrollHeight - viewportHeight * 0.2
+        document.body.scrollHeight - viewportHeight * 0.2,
       );
 
       console.log(`Scrolling to ${scrollTarget}`);
@@ -267,7 +267,7 @@ export default defineContentScript({
       ) {
         noChangeCount++;
         console.log(
-          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, products: ${currentProducts.length})`
+          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, products: ${currentProducts.length})`,
         );
       } else {
         noChangeCount = 0;
@@ -276,8 +276,8 @@ export default defineContentScript({
 
       console.log(
         `Scrolling attempt ${pageCount}/${maxScrollAttempts}, position: ${Math.round(
-          window.scrollY
-        )}/${document.body.scrollHeight}, URLs: ${urls.length}`
+          window.scrollY,
+        )}/${document.body.scrollHeight}, URLs: ${urls.length}`,
       );
 
       // 更新状态面板
@@ -287,7 +287,7 @@ export default defineContentScript({
         `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
         `📍 Position: ${Math.round(window.scrollY)}/${
           document.body.scrollHeight
-        }px`
+        }px`,
       );
     }
 
@@ -298,7 +298,7 @@ export default defineContentScript({
       "completed",
       urls.length,
       "100%",
-      `🎉 Scroll completed!<br>Preparing to open ${urls.length} tabs...`
+      `🎉 Scroll completed!<br>Preparing to open ${urls.length} tabs...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -313,7 +313,7 @@ export default defineContentScript({
         "running",
         urls.length,
         "100%",
-        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -326,7 +326,7 @@ export default defineContentScript({
       "completed",
       urls.length,
       "100%",
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`
+      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`,
     );
 
     // 5秒后移除状态面板
