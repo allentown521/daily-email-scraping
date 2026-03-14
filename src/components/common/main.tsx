@@ -4,10 +4,14 @@ import {
   deactivatePremium,
   validatePremiumOnline,
 } from "@/service/premium";
-import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
-import { checkIsInTrial, cn, scraperEnabled } from "~/lib/utils";
+import {
+  checkIsInTrial,
+  cn,
+  getDeviceFingerPrint,
+  scraperEnabled,
+} from "~/lib/utils";
 import { Button } from "../ui/Button";
 import {
   Card,
@@ -235,9 +239,7 @@ export const Main = ({ className, filename }: MainProps) => {
   // 生成设备指纹
   const generateDeviceFingerprint = async (): Promise<string> => {
     try {
-      // 使用 FingerprintJS 生成更准确的设备指纹
-      const fp = await FingerprintJS.load();
-      const { visitorId } = await fp.get();
+      const visitorId = await getDeviceFingerPrint();
       return visitorId;
     } catch (error) {
       console.warn(

@@ -14,8 +14,8 @@ export const getName = (user: User) => {
   return typeof name === "string"
     ? name
     : nameFromEmail
-    ? nameFromEmail
-    : undefined;
+      ? nameFromEmail
+      : undefined;
 };
 
 export const getAvatar = (user: User) => {
@@ -44,7 +44,7 @@ export const checkIsInTrial = async () => {
   try {
     // 总是从服务器获取试用状态
     const response = await fetch(
-      `https://plunk.focusapps.app/api/v1/contacts/${contactId}`
+      `https://plunk.focusapps.app/api/v1/contacts/${contactId}`,
     );
 
     if (!response.ok) {
@@ -55,7 +55,7 @@ export const checkIsInTrial = async () => {
     const createdAt = new Date(contactData.createdAt);
     const now = new Date();
     const daysDiff = Math.floor(
-      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
     );
     const daysLeft = Math.max(0, 3 - daysDiff);
 
@@ -70,3 +70,33 @@ export const checkIsInTrial = async () => {
     return { isInTrial: false, daysLeft: 0 };
   }
 };
+
+export async function getDeviceFingerPrint() {
+  const { hardwareConcurrency, userAgent, language, languages } = navigator;
+
+  const languagesList = Array.isArray(languages)
+    ? languages.join(",")
+    : language;
+
+  const screenInfo = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+  const timezoneOffset = new Date().getTimezoneOffset();
+
+  const rawId = [
+    hardwareConcurrency,
+    screenInfo,
+    timezoneOffset,
+    userAgent,
+    languagesList,
+  ].join("-");
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(rawId);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  return hashHex;
+}
