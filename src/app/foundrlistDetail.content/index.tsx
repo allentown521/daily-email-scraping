@@ -22,11 +22,9 @@ export default defineContentScript({
     // wait for the page to load
     await new Promise((resolve) => setTimeout(resolve, 5000));
     document.querySelectorAll("a").forEach((a) => {
-      if (a.innerText.trim() === "Visit Website") {
-        const href = a.getAttribute("href");
-        if (href) {
-          visitSiteUrls.push(href);
-        }
+      const href = a.getAttribute("href");
+      if (href?.includes("ref=foundrlist")) {
+        visitSiteUrls.push(href);
       }
     });
 
