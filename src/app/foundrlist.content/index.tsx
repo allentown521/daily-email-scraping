@@ -5,7 +5,7 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://foundrlist.com/product"],
+  matches: ["https://foundrlist.com/"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
@@ -250,7 +250,7 @@ export default defineContentScript({
       let match;
       const currentProducts = [];
 
-      while ((match = regex.exec(html)) !== null) {
+      /*       while ((match = regex.exec(html)) !== null) {
         const fullMatch = match[0];
         const type = match[1];
         const id = fullMatch.split(`/${type}/`)[1];
@@ -266,7 +266,16 @@ export default defineContentScript({
         if (!urls.includes(url)) {
           urls.push(url);
         }
-      }
+      } */
+
+      document.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (href?.includes("utm_source=foundrlist")) {
+          if (!urls.includes(href)) {
+            urls.push(href);
+          }
+        }
+      });
 
       // 检查高度和产品数量是否变化
       if (

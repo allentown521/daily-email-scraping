@@ -211,7 +211,7 @@ export const Main = ({ className, filename }: MainProps) => {
     {
       id: "foundrlist",
       name: "foundrlist",
-      url: "https://foundrlist.com/product",
+      url: "https://foundrlist.com/",
     },
     /*     {
       id: "launchigniter",
