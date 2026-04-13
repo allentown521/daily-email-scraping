@@ -156,7 +156,7 @@ export const Main = ({ className, filename }: MainProps) => {
       name: "fazier",
       url: (date: Date) => {
         const yesterday = new Date(date);
-        yesterday.setDate(yesterday.getDate());
+        yesterday.setDate(yesterday.getDate() - 1);
 
         const year = yesterday.getFullYear();
         const month = yesterday.getMonth() + 1; // getMonth() returns 0-11
