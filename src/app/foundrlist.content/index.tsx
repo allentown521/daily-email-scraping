@@ -5,7 +5,7 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://foundrlist.com/"],
+  matches: ["https://foundrlist.com/home", "https://www.foundrlist.com/home"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
