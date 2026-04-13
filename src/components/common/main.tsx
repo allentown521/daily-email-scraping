@@ -46,12 +46,15 @@ export const Main = ({ className, filename }: MainProps) => {
     openhunts: false,
     auraplusplus: false,
     launchitx: false,
+    nxgntools: false,
+    foundrlist: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
     {
-      weekly: false,
       daily: false,
+      thisWeek: false,
+      lastWeek: false,
     },
   );
 
@@ -71,36 +74,56 @@ export const Main = ({ className, filename }: MainProps) => {
   const [isContentScriptEnabled, setIsContentScriptEnabled] = useState(true); // 总开关，默认打开
   const [showTooltip, setShowTooltip] = useState(false); // 控制tooltip显示
   const handleGroupCheckboxChange = (group: string) => {
-    const newGroupSelection = {
-      ...groupSelection,
-      [group]: !groupSelection[group],
-    };
+    const isBeingSelected = !groupSelection[group]; // 是否被选中
+
+    // 如果要选中这个分类，先取消其他分类
+    let newGroupSelection: Record<string, boolean>;
+    if (isBeingSelected) {
+      newGroupSelection = {
+        daily: group === "daily",
+        thisWeek: group === "thisWeek",
+        lastWeek: group === "lastWeek",
+      };
+    } else {
+      // 取消勾选时只改变当前分类
+      newGroupSelection = {
+        ...groupSelection,
+        [group]: false,
+      };
+    }
+
     setGroupSelection(newGroupSelection);
 
-    if (group === "weekly") {
-      setSelectedSites((prev) => ({
-        ...prev,
-        peerlist: newGroupSelection.weekly,
-        tinylaunch: newGroupSelection.weekly,
-        nxgntools: newGroupSelection.weekly,
-        openhunts: newGroupSelection.weekly,
-        foundrlist: newGroupSelection.weekly,
-        // launchigniter: newGroupSelection.weekly,
-      }));
-    } else if (group === "daily") {
-      setSelectedSites((prev) => ({
-        ...prev,
-        productHunt: newGroupSelection.daily,
-        startupfast: newGroupSelection.daily,
-        uneed: newGroupSelection.daily,
-        fazier: newGroupSelection.daily,
-        openLaunch: newGroupSelection.daily,
-        firsto: newGroupSelection.daily,
-        auraplusplus: newGroupSelection.daily,
-        launchitx: newGroupSelection.daily,
-        // peerpush: newGroupSelection.daily,
-      }));
-    }
+    // 清空所有网站选择，只保留新选中分类的网站
+    setSelectedSites((prev) => {
+      const newSelection = { ...prev };
+
+      // 先清空所有网站
+      for (const key of Object.keys(newSelection)) {
+        newSelection[key] = false;
+      }
+
+      // 然后只选择新分类的网站
+      if (group === "thisWeek" && newGroupSelection.thisWeek) {
+        newSelection.peerlist = true;
+        newSelection.nxgntools = true;
+        newSelection.openhunts = true;
+        newSelection.foundrlist = true;
+      } else if (group === "lastWeek" && newGroupSelection.lastWeek) {
+        newSelection.tinylaunch = true;
+      } else if (group === "daily" && newGroupSelection.daily) {
+        newSelection.productHunt = true;
+        newSelection.startupfast = true;
+        newSelection.uneed = true;
+        newSelection.fazier = true;
+        newSelection.openLaunch = true;
+        newSelection.firsto = true;
+        newSelection.auraplusplus = true;
+        newSelection.launchitx = true;
+      }
+
+      return newSelection;
+    });
   };
 
   const siteOptions: SiteOption[] = [
@@ -179,7 +202,18 @@ export const Main = ({ className, filename }: MainProps) => {
     {
       id: "tinylaunch",
       name: "tinylaunch",
-      url: "https://www.tinylaunch.com/",
+      url: (date: Date) => {
+        const lastMonday = new Date(date);
+        const day = lastMonday.getDay();
+        const daysToSubtract = day === 0 ? 6 : day + 6; // Calculate days to last Monday
+        lastMonday.setDate(lastMonday.getDate() - daysToSubtract);
+
+        const year = lastMonday.getFullYear();
+        const month = lastMonday.getMonth() + 1;
+        const dayOfMonth = lastMonday.getDate();
+
+        return `https://www.tinylaunch.com/launch-archive/${year}/${month}/${dayOfMonth}`;
+      },
     },
     {
       id: "auraplusplus",
@@ -512,7 +546,7 @@ export const Main = ({ className, filename }: MainProps) => {
         </h2>
         <div
           className={cn(
-            "grid grid-cols-2 gap-2",
+            "grid grid-cols-3 gap-2",
             !isContentScriptEnabled && "opacity-50 pointer-events-none",
           )}
         >
@@ -532,14 +566,27 @@ export const Main = ({ className, filename }: MainProps) => {
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
-              id="weekly"
-              checked={groupSelection.weekly}
-              onChange={() => handleGroupCheckboxChange("weekly")}
+              id="thisWeek"
+              checked={groupSelection.thisWeek}
+              onChange={() => handleGroupCheckboxChange("thisWeek")}
               disabled={!isContentScriptEnabled}
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label htmlFor="weekly" className="text-sm font-medium">
-              Weekly
+            <label htmlFor="thisWeek" className="text-sm font-medium">
+              this week
+            </label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="lastWeek"
+              checked={groupSelection.lastWeek}
+              onChange={() => handleGroupCheckboxChange("lastWeek")}
+              disabled={!isContentScriptEnabled}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <label htmlFor="lastWeek" className="text-sm font-medium">
+              last week
             </label>
           </div>
 
