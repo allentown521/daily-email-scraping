@@ -120,6 +120,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.firsto = true;
         newSelection.auraplusplus = true;
         newSelection.launchitx = true;
+        //newSelection.peerpush = true;
       }
 
       return newSelection;
@@ -230,13 +231,13 @@ export const Main = ({ className, filename }: MainProps) => {
       name: "launchitx",
       url: "https://launchitx.com/trending?filter=today",
     },
-    {
+    /*     {
       id: "peerpush",
       name: "peerpush",
       openInSingleBrowser: true,
 
       url: "https://peerpush.net/?view=live",
-    },
+    }, */
     {
       id: "nxgntools",
       name: "nxgntools",
@@ -546,65 +547,116 @@ export const Main = ({ className, filename }: MainProps) => {
         </h2>
         <div
           className={cn(
-            "grid grid-cols-3 gap-2",
+            "grid grid-cols-3 gap-4",
             !isContentScriptEnabled && "opacity-50 pointer-events-none",
           )}
         >
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="daily"
-              checked={groupSelection.daily}
-              onChange={() => handleGroupCheckboxChange("daily")}
-              disabled={!isContentScriptEnabled}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <label htmlFor="daily" className="text-sm font-medium">
-              Daily
-            </label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="thisWeek"
-              checked={groupSelection.thisWeek}
-              onChange={() => handleGroupCheckboxChange("thisWeek")}
-              disabled={!isContentScriptEnabled}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <label htmlFor="thisWeek" className="text-sm font-medium">
-              this week
-            </label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="lastWeek"
-              checked={groupSelection.lastWeek}
-              onChange={() => handleGroupCheckboxChange("lastWeek")}
-              disabled={!isContentScriptEnabled}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <label htmlFor="lastWeek" className="text-sm font-medium">
-              last week
-            </label>
-          </div>
-
-          {siteOptions.map((site) => (
-            <div key={site.id} className="flex items-center space-x-2">
+          {/* Daily Column */}
+          <div className="flex flex-col space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="flex items-center space-x-2 pb-2 border-b border-gray-300">
               <input
                 type="checkbox"
-                id={site.id}
-                checked={selectedSites[site.id]}
-                onChange={() => handleCheckboxChange(site.id)}
+                id="daily"
+                checked={groupSelection.daily}
+                onChange={() => handleGroupCheckboxChange("daily")}
                 disabled={!isContentScriptEnabled}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <label htmlFor={site.id} className="text-sm font-medium">
-                {site.name}
+              <label htmlFor="daily" className="text-sm font-semibold text-gray-900">
+                Daily
               </label>
             </div>
-          ))}
+            {["productHunt", "startupfast", "uneed", "fazier", "openLaunch", "firsto", "auraplusplus", "launchitx"].map(
+              (siteId) => {
+                const site = siteOptions.find((s) => s.id === siteId);
+                return site ? (
+                  <div key={site.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={site.id}
+                      checked={selectedSites[site.id]}
+                      onChange={() => handleCheckboxChange(site.id)}
+                      disabled={!isContentScriptEnabled}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label htmlFor={site.id} className="text-sm font-medium text-gray-700">
+                      {site.name}
+                    </label>
+                  </div>
+                ) : null;
+              },
+            )}
+          </div>
+
+          {/* This Week Column */}
+          <div className="flex flex-col space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="flex items-center space-x-2 pb-2 border-b border-gray-300">
+              <input
+                type="checkbox"
+                id="thisWeek"
+                checked={groupSelection.thisWeek}
+                onChange={() => handleGroupCheckboxChange("thisWeek")}
+                disabled={!isContentScriptEnabled}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <label htmlFor="thisWeek" className="text-sm font-semibold text-gray-900">
+                this week
+              </label>
+            </div>
+            {["peerlist", "nxgntools", "openhunts", "foundrlist"].map((siteId) => {
+              const site = siteOptions.find((s) => s.id === siteId);
+              return site ? (
+                <div key={site.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={site.id}
+                    checked={selectedSites[site.id]}
+                    onChange={() => handleCheckboxChange(site.id)}
+                    disabled={!isContentScriptEnabled}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <label htmlFor={site.id} className="text-sm font-medium text-gray-700">
+                    {site.name}
+                  </label>
+                </div>
+              ) : null;
+            })}
+          </div>
+
+          {/* Last Week Column */}
+          <div className="flex flex-col space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="flex items-center space-x-2 pb-2 border-b border-gray-300">
+              <input
+                type="checkbox"
+                id="lastWeek"
+                checked={groupSelection.lastWeek}
+                onChange={() => handleGroupCheckboxChange("lastWeek")}
+                disabled={!isContentScriptEnabled}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <label htmlFor="lastWeek" className="text-sm font-semibold text-gray-900">
+                last week
+              </label>
+            </div>
+            {["tinylaunch"].map((siteId) => {
+              const site = siteOptions.find((s) => s.id === siteId);
+              return site ? (
+                <div key={site.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={site.id}
+                    checked={selectedSites[site.id]}
+                    onChange={() => handleCheckboxChange(site.id)}
+                    disabled={!isContentScriptEnabled}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <label htmlFor={site.id} className="text-sm font-medium text-gray-700">
+                    {site.name}
+                  </label>
+                </div>
+              ) : null;
+            })}
+          </div>
         </div>
         <Button
           onClick={handleStartScraping}
