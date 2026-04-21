@@ -5,12 +5,12 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://www.producthunt.com/leaderboard/daily/*/*/*/*"],
+  matches: ["https://www.producthunt.com/products/*"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
   async main(ctx) {
-    console.log("Content script is running on producthunt.");
+    console.log("Content script is running on product hunt detail.");
     if (!(await scraperEnabled())) {
       return;
     }
@@ -18,19 +18,10 @@ export default defineContentScript({
       return;
     }
     const urls = [];
-    let pageCount = 0;
-    let previousHeight = 0;
-    let currentHeight = document.body.scrollHeight;
-    let noChangeCount = 0;
-    const maxNoChangeCount = 5;
-    const maxScrollAttempts = 500;
-
-    // 记录已经看到的产品数量
-    let previousProductCount = 0;
 
     // 创建持续显示的状态面板
     let statusPanel = null;
-    const statusPanelId = "producthunt-status-panel-" + Date.now();
+    const statusPanelId = "product-status-panel-" + Date.now();
 
     const createStatusPanel = () => {
       // 检查是否已存在且在 DOM 中
@@ -108,7 +99,7 @@ export default defineContentScript({
       return panel;
     };
 
-    const updateStatus = (status, itemCount, scrollProgress, extra = "") => {
+    const updateStatus = (status, itemCount, extra = "") => {
       // 总是重新创建面板以确保显示
       const panel = createStatusPanel();
 
@@ -124,14 +115,12 @@ export default defineContentScript({
 
       const statusColors = {
         running: "#4CAF50",
-        paused: "#ff6b6b",
         completed: "#2196F3",
         error: "#f44336",
       };
 
       const statusIcons = {
         running: "🔄",
-        paused: "⏸️",
         completed: "✅",
         error: "❌",
       };
@@ -146,18 +135,15 @@ export default defineContentScript({
           <strong style="font-size: 16px; color: ${borderColor};">
             ${
               status === "running"
-                ? "Scrolling"
-                : status === "paused"
-                  ? "Paused"
-                  : status === "completed"
-                    ? "Completed"
-                    : "Error"
+                ? "Collecting"
+                : status === "completed"
+                  ? "Completed"
+                  : "Error"
             }
           </strong>
         </div>
         <div style="font-size: 13px; color: #ccc; line-height: 1.6;">
-          <div>📦 Collected: <strong style="color: white; font-size: 15px;">${itemCount}</strong> products</div>
-          <div>📊 Progress: <strong style="color: white;">${scrollProgress}</strong></div>
+          <div>📦 Collected: <strong style="color: white; font-size: 15px;">${itemCount}</strong> links</div>
           ${
             extra
               ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444;">${extra}</div>`
@@ -166,9 +152,7 @@ export default defineContentScript({
         </div>
       `;
 
-      console.log(
-        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`,
-      );
+      console.log(`Status updated: ${status}, items: ${itemCount}`);
     };
 
     const removeStatusPanel = () => {
@@ -180,133 +164,23 @@ export default defineContentScript({
     };
 
     // 初始化状态面板
-    updateStatus("running", 0, "0%", "Starting scroll task...");
+    updateStatus("running", 0, "Starting to collect links...");
 
-    // 检查页面可见性并提醒
-    const checkVisibility = () => {
-      if (document.hidden) {
-        updateStatus(
-          "paused",
-          urls.length,
-          `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return",
-        );
-        return false;
+    document.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href");
+      const text = a.innerText.trim().toLowerCase();
+      if (href && href.includes("ref=producthunt") && text.includes("visit")) {
+        urls.push(href);
       }
-      return true;
-    };
+    });
 
-    while (pageCount < maxScrollAttempts && noChangeCount < maxNoChangeCount) {
-      // 检查页面是否在前台
-      if (!checkVisibility()) {
-        console.log("Page is in background, pausing scrolling");
-        // 等待页面重新可见，但不增加 pageCount
-        while (document.hidden) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-        console.log("Page is now visible, resuming scrolling");
-        updateStatus(
-          "running",
-          urls.length,
-          `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "✨ Resuming scroll...",
-        );
-      }
+    console.log(`Total URLs collected: ${urls.length}`);
 
-      pageCount++;
-
-      previousHeight = currentHeight;
-
-      const viewportHeight = window.innerHeight;
-      const scrollPosition = window.scrollY;
-      const randomFactor = 0.5 + Math.random() * 0.5;
-      const scrollStep = viewportHeight * randomFactor;
-
-      const scrollTarget = Math.min(
-        scrollPosition + scrollStep,
-        document.body.scrollHeight - viewportHeight * 0.2,
-      );
-
-      console.log(`Scrolling to ${scrollTarget}`);
-
-      // 执行滚动
-      window.scrollTo({
-        top: scrollTarget,
-        behavior: "smooth",
-      });
-
-      // 等待页面响应和加载
-      const waitTime = 5000 + Math.random() * 2000;
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-
-      currentHeight = document.body.scrollHeight;
-
-      // 检查页面内容是否有变化并收集URL
-      const html = document.documentElement.innerHTML;
-      // 匹配两种格式: post-item-数字ID 或 /products/字符串slug
-      const regex = /(?:post-item-(\d+)|\/products\/([a-zA-Z0-9-]+))/g;
-      const currentProducts: string[] = [];
-
-      let match: RegExpExecArray | null;
-      match = regex.exec(html);
-      while (match !== null) {
-        const numericId = match[1];
-        const slugId = match[2];
-        const productId = (numericId ?? slugId) as string;
-
-        if (productId && !currentProducts.includes(productId)) {
-          currentProducts.push(productId);
-        }
-
-        const url = numericId
-          ? `https://www.producthunt.com/r/p/${productId}`
-          : `https://www.producthunt.com/products/${productId}`;
-        if (url && !urls.includes(url)) {
-          urls.push(url);
-        }
-
-        match = regex.exec(html);
-      }
-
-      // 检查高度和产品数量是否变化
-      if (
-        previousHeight === currentHeight &&
-        previousProductCount === currentProducts.length
-      ) {
-        noChangeCount++;
-        console.log(
-          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, products: ${currentProducts.length})`,
-        );
-      } else {
-        noChangeCount = 0;
-        previousProductCount = currentProducts.length;
-      }
-
-      console.log(
-        `Scrolling attempt ${pageCount}/${maxScrollAttempts}, position: ${Math.round(
-          window.scrollY,
-        )}/${document.body.scrollHeight}, URLs: ${urls.length}`,
-      );
-
-      // 更新状态面板
-      updateStatus(
-        "running",
-        urls.length,
-        `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-        `📍 Position: ${Math.round(window.scrollY)}/${
-          document.body.scrollHeight
-        }px`,
-      );
-    }
-
-    console.log(`Scrolling completed. Total URLs collected: ${urls.length}`);
-
-    // 更新为完成状态
+    // 更新为准备打开状态
     updateStatus(
-      "completed",
+      "running",
       urls.length,
-      "100%",
-      `🎉 Scroll completed!<br>Preparing to open ${urls.length} tabs...`,
+      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -320,7 +194,6 @@ export default defineContentScript({
       updateStatus(
         "running",
         urls.length,
-        "100%",
         `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`,
       );
 
@@ -329,17 +202,16 @@ export default defineContentScript({
 
     console.log(`All ${urls.length} tabs have been opened.`);
 
-    // 最后更新状态
+    // 最后更新为完成状态
     updateStatus(
       "completed",
       urls.length,
-      "100%",
       `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`,
     );
 
     // 5秒后移除状态面板
-    /*     setTimeout(() => {
+    setTimeout(() => {
       removeStatusPanel();
-    }, 5000); */
+    }, 5000);
   },
 });
