@@ -5,7 +5,7 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://launchitx.com/trending?filter=today"],
+  matches: ["https://launchitx.com/trending?filter=yesterday"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
@@ -67,7 +67,7 @@ export default defineContentScript({
           document.body.appendChild(panel);
           console.log(
             "Status panel created and attached to body with ID:",
-            statusPanelId
+            statusPanelId,
           );
 
           // 添加一个 MutationObserver 来监控面板是否被意外移除
@@ -107,7 +107,7 @@ export default defineContentScript({
       setTimeout(() => {
         if (!document.body.contains(panel)) {
           console.log(
-            "Panel still not in DOM after creation, forcing re-add..."
+            "Panel still not in DOM after creation, forcing re-add...",
           );
           document.body.appendChild(panel);
         }
@@ -137,8 +137,8 @@ export default defineContentScript({
               status === "running"
                 ? "Collecting"
                 : status === "completed"
-                ? "Completed"
-                : "Error"
+                  ? "Completed"
+                  : "Error"
             }
           </strong>
         </div>
@@ -184,7 +184,7 @@ export default defineContentScript({
     updateStatus(
       "running",
       urls.length,
-      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`
+      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -198,7 +198,7 @@ export default defineContentScript({
       updateStatus(
         "running",
         urls.length,
-        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -210,7 +210,7 @@ export default defineContentScript({
     updateStatus(
       "completed",
       urls.length,
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`
+      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`,
     );
 
     // 5秒后移除状态面板

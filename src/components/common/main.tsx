@@ -229,7 +229,7 @@ export const Main = ({ className, filename }: MainProps) => {
     {
       id: "launchitx",
       name: "launchitx",
-      url: "https://launchitx.com/trending?filter=today",
+      url: "https://launchitx.com/trending?filter=yesterday",
     },
     /*     {
       id: "peerpush",
@@ -562,30 +562,43 @@ export const Main = ({ className, filename }: MainProps) => {
                 disabled={!isContentScriptEnabled}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <label htmlFor="daily" className="text-sm font-semibold text-gray-900">
+              <label
+                htmlFor="daily"
+                className="text-sm font-semibold text-gray-900"
+              >
                 Daily
               </label>
             </div>
-            {["productHunt", "startupfast", "uneed", "fazier", "openLaunch", "firsto", "auraplusplus", "launchitx"].map(
-              (siteId) => {
-                const site = siteOptions.find((s) => s.id === siteId);
-                return site ? (
-                  <div key={site.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={site.id}
-                      checked={selectedSites[site.id]}
-                      onChange={() => handleCheckboxChange(site.id)}
-                      disabled={!isContentScriptEnabled}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <label htmlFor={site.id} className="text-sm font-medium text-gray-700">
-                      {site.name}
-                    </label>
-                  </div>
-                ) : null;
-              },
-            )}
+            {[
+              "productHunt",
+              "startupfast",
+              "uneed",
+              "fazier",
+              "openLaunch",
+              "firsto",
+              "auraplusplus",
+              "launchitx",
+            ].map((siteId) => {
+              const site = siteOptions.find((s) => s.id === siteId);
+              return site ? (
+                <div key={site.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={site.id}
+                    checked={selectedSites[site.id]}
+                    onChange={() => handleCheckboxChange(site.id)}
+                    disabled={!isContentScriptEnabled}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <label
+                    htmlFor={site.id}
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    {site.name}
+                  </label>
+                </div>
+              ) : null;
+            })}
           </div>
 
           {/* This Week Column */}
@@ -599,28 +612,36 @@ export const Main = ({ className, filename }: MainProps) => {
                 disabled={!isContentScriptEnabled}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <label htmlFor="thisWeek" className="text-sm font-semibold text-gray-900">
+              <label
+                htmlFor="thisWeek"
+                className="text-sm font-semibold text-gray-900"
+              >
                 this week
               </label>
             </div>
-            {["peerlist", "nxgntools", "openhunts", "foundrlist"].map((siteId) => {
-              const site = siteOptions.find((s) => s.id === siteId);
-              return site ? (
-                <div key={site.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={site.id}
-                    checked={selectedSites[site.id]}
-                    onChange={() => handleCheckboxChange(site.id)}
-                    disabled={!isContentScriptEnabled}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <label htmlFor={site.id} className="text-sm font-medium text-gray-700">
-                    {site.name}
-                  </label>
-                </div>
-              ) : null;
-            })}
+            {["peerlist", "nxgntools", "openhunts", "foundrlist"].map(
+              (siteId) => {
+                const site = siteOptions.find((s) => s.id === siteId);
+                return site ? (
+                  <div key={site.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={site.id}
+                      checked={selectedSites[site.id]}
+                      onChange={() => handleCheckboxChange(site.id)}
+                      disabled={!isContentScriptEnabled}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label
+                      htmlFor={site.id}
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      {site.name}
+                    </label>
+                  </div>
+                ) : null;
+              },
+            )}
           </div>
 
           {/* Last Week Column */}
@@ -634,7 +655,10 @@ export const Main = ({ className, filename }: MainProps) => {
                 disabled={!isContentScriptEnabled}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <label htmlFor="lastWeek" className="text-sm font-semibold text-gray-900">
+              <label
+                htmlFor="lastWeek"
+                className="text-sm font-semibold text-gray-900"
+              >
                 last week
               </label>
             </div>
@@ -650,7 +674,10 @@ export const Main = ({ className, filename }: MainProps) => {
                     disabled={!isContentScriptEnabled}
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   />
-                  <label htmlFor={site.id} className="text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor={site.id}
+                    className="text-sm font-medium text-gray-700"
+                  >
                     {site.name}
                   </label>
                 </div>
