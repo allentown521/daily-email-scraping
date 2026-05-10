@@ -170,12 +170,11 @@ export default defineContentScript({
       const href = a.getAttribute("href");
       if (
         href &&
-        !href.startsWith("https") &&
+        href.startsWith("https") &&
         !href.includes("open-launch") &&
-        !href.includes("openhunts") &&
-        href.includes("projects")
+        href.includes("openhunts")
       ) {
-        urls.push(`https://openhunts.com/${href}`);
+        urls.push(`${href}`);
       }
     });
 
