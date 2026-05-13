@@ -48,6 +48,7 @@ export const Main = ({ className, filename }: MainProps) => {
     launchitx: false,
     nxgntools: false,
     foundrlist: false,
+    tinystartups: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -120,6 +121,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.firsto = true;
         newSelection.auraplusplus = true;
         newSelection.launchitx = true;
+        newSelection.tinystartups = true;
         //newSelection.peerpush = true;
       }
 
@@ -247,6 +249,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "foundrlist",
       name: "foundrlist",
       url: "https://foundrlist.com/home",
+    },
+    {
+      id: "tinystartups",
+      name: "tinystartups",
+      url: "https://www.tinystartups.com/",
     },
     /*     {
       id: "launchigniter",
@@ -578,6 +585,7 @@ export const Main = ({ className, filename }: MainProps) => {
               "firsto",
               "auraplusplus",
               "launchitx",
+              "tinystartups",
             ].map((siteId) => {
               const site = siteOptions.find((s) => s.id === siteId);
               return site ? (
