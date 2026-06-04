@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Theme, type User } from "~/types";
 import { type WxtStorageItem, storage as browserStorage } from "#imports";
+import type { ScrapedEmail } from "./email-scraper";
 
 export const StorageKey = {
   THEME: "local:theme",
   USER: "local:user",
+  COLLECTED_EMAILS: "local:collected_emails",
 } as const;
 
 export type StorageKey = (typeof StorageKey)[keyof typeof StorageKey];
@@ -16,6 +18,12 @@ const storage = {
   [StorageKey.USER]: browserStorage.defineItem<User | null>(StorageKey.USER, {
     fallback: null,
   }),
+  [StorageKey.COLLECTED_EMAILS]: browserStorage.defineItem<ScrapedEmail[]>(
+    StorageKey.COLLECTED_EMAILS,
+    {
+      fallback: [],
+    },
+  ),
 } as const;
 
 type Value<T extends StorageKey> = (typeof storage)[T] extends WxtStorageItem<

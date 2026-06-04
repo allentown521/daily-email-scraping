@@ -76,7 +76,7 @@ export default defineContentScript({
           document.body.appendChild(panel);
           console.log(
             "Status panel created and attached to body with ID:",
-            statusPanelId
+            statusPanelId,
           );
 
           // 添加一个 MutationObserver 来监控面板是否被意外移除
@@ -116,7 +116,7 @@ export default defineContentScript({
       setTimeout(() => {
         if (!document.body.contains(panel)) {
           console.log(
-            "Panel still not in DOM after creation, forcing re-add..."
+            "Panel still not in DOM after creation, forcing re-add...",
           );
           document.body.appendChild(panel);
         }
@@ -148,10 +148,10 @@ export default defineContentScript({
               status === "running"
                 ? "Scrolling"
                 : status === "paused"
-                ? "Paused"
-                : status === "completed"
-                ? "Completed"
-                : "Error"
+                  ? "Paused"
+                  : status === "completed"
+                    ? "Completed"
+                    : "Error"
             }
           </strong>
         </div>
@@ -167,7 +167,7 @@ export default defineContentScript({
       `;
 
       console.log(
-        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`
+        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`,
       );
     };
 
@@ -189,7 +189,7 @@ export default defineContentScript({
           "paused",
           urls.length,
           `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return"
+          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return",
         );
         return false;
       }
@@ -209,7 +209,7 @@ export default defineContentScript({
           "running",
           urls.length,
           `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "✨ Resuming scroll..."
+          "✨ Resuming scroll...",
         );
       }
 
@@ -228,7 +228,7 @@ export default defineContentScript({
       // 计算目标滚动位置，但不要超过文档高度
       const scrollTarget = Math.min(
         scrollPosition + scrollStep,
-        document.body.scrollHeight - viewportHeight * 0.2 // 留出一点底部空间以触发加载
+        document.body.scrollHeight - viewportHeight * 0.2, // 留出一点底部空间以触发加载
       );
 
       // 执行滚动
@@ -272,7 +272,7 @@ export default defineContentScript({
       ) {
         noChangeCount++;
         console.log(
-          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, projects: ${currentProducts.length})`
+          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, projects: ${currentProducts.length})`,
         );
       } else {
         noChangeCount = 0; // 重置计数器
@@ -281,10 +281,10 @@ export default defineContentScript({
 
       console.log(
         `Scrolling attempt ${pageCount}/${maxScrollAttempts}, position: ${Math.round(
-          window.scrollY
+          window.scrollY,
         )}/${document.body.scrollHeight}, collecting URLs... length: ${
           urls.length
-        }`
+        }`,
       );
 
       // 更新状态面板
@@ -294,33 +294,26 @@ export default defineContentScript({
         `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
         `📍 Position: ${Math.round(window.scrollY)}/${
           document.body.scrollHeight
-        }px`
+        }px`,
       );
     }
 
     console.log(`Scrolling completed. Total URLs collected: ${urls.length}`);
 
-    // 更新为完成状态
-    updateStatus(
-      "completed",
-      urls.length,
-      "100%",
-      `🎉 Scroll completed!<br>Preparing to open ${urls.length} tabs...`
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // 开始打开标签页
+    updateStatus("running", urls.length, "100%", "🔄 Opening product pages...");
 
     let openedTabsCount = 0;
     for (const url of urls) {
-      await sendMessage(Message.OPEN_TAB, `${url}`);
+      await sendMessage(Message.OPEN_TAB, url);
       openedTabsCount++;
 
-      // 更新状态，显示正在打开的标签页数量
+      // 实时显示已打开的网页数
       updateStatus(
         "running",
         urls.length,
         "100%",
-        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+        `🔄 Opening pages...<br>📂 Opened: ${openedTabsCount}/${urls.length}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -328,12 +321,11 @@ export default defineContentScript({
 
     console.log(`All ${urls.length} tabs have been opened.`);
 
-    // 最后更新状态
     updateStatus(
       "completed",
       urls.length,
       "100%",
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`
+      `✅ Completed!<br>📂 Opened: ${openedTabsCount}/${urls.length} pages`,
     );
 
     // 5秒后移除状态面板

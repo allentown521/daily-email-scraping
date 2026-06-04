@@ -7,6 +7,7 @@ export default defineConfig({
     name: "__MSG_extensionName__",
     description: "__MSG_extensionDescription__",
     default_locale: "en",
+    host_permissions: ["<all_urls>"],
     permissions: ["storage", "sidePanel", "tabs", "alarms", "notifications"],
   },
   srcDir: "src",
@@ -17,5 +18,5 @@ export default defineConfig({
   vite: () =>
     ({
       plugins: [svgr(), tailwindcss()],
-    } as WxtViteConfig),
+    }) as WxtViteConfig,
 });

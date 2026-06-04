@@ -17,6 +17,7 @@ export default defineContentScript({
     if (!(await isPurchasedOrTrial())) {
       return;
     }
+
     const urls = [];
     let pageCount = 0;
     let previousHeight = 0;
@@ -301,27 +302,20 @@ export default defineContentScript({
 
     console.log(`Scrolling completed. Total URLs collected: ${urls.length}`);
 
-    // 更新为完成状态
-    updateStatus(
-      "completed",
-      urls.length,
-      "100%",
-      `🎉 Scroll completed!<br>Preparing to open ${urls.length} tabs...`,
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // 开始打开标签页
+    updateStatus("running", urls.length, "100%", "🔄 Opening product pages...");
 
     let openedTabsCount = 0;
     for (const url of urls) {
-      await sendMessage(Message.OPEN_TAB, `${url}`);
+      await sendMessage(Message.OPEN_TAB, url);
       openedTabsCount++;
 
-      // 更新状态，显示正在打开的标签页数量
+      // 实时显示已打开的网页数
       updateStatus(
         "running",
         urls.length,
         "100%",
-        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`,
+        `🔄 Opening pages...<br>📂 Opened: ${openedTabsCount}/${urls.length}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -329,12 +323,11 @@ export default defineContentScript({
 
     console.log(`All ${urls.length} tabs have been opened.`);
 
-    // 最后更新状态
     updateStatus(
       "completed",
       urls.length,
       "100%",
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`,
+      `✅ Completed!<br>📂 Opened: ${openedTabsCount}/${urls.length} pages`,
     );
 
     // 5秒后移除状态面板

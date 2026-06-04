@@ -206,5 +206,5 @@ const Help = () => {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <Help />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

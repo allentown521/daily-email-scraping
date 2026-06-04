@@ -176,37 +176,41 @@ export default defineContentScript({
 
     console.log(`Total URLs collected: ${urls.length}`);
 
-    // 更新为准备打开状态
+    // 更新为处理中状态
     updateStatus(
       "running",
       urls.length,
-      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`,
+      `🔄 Fetching emails from ${urls.length} websites...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    let openedTabsCount = 0;
+    let processedCount = 0;
     for (const url of urls) {
-      await sendMessage(Message.OPEN_TAB, `${url}`);
-      openedTabsCount++;
+      try {
+        await sendMessage(Message.SCRAPE_EMAILS, url);
+        processedCount++;
 
-      // 更新状态，显示正在打开的标签页数量
-      updateStatus(
-        "running",
-        urls.length,
-        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`,
-      );
+        // 更新状态，显示已处理的网页数量
+        updateStatus(
+          "running",
+          urls.length,
+          `🔄 Processing...<br>📂 Opened: ${processedCount}/${urls.length}`,
+        );
+      } catch (error) {
+        console.error(`Error scraping ${url}:`, error);
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
-    console.log(`All ${urls.length} tabs have been opened.`);
+    console.log(`All ${urls.length} websites have been processed.`);
 
     // 最后更新为完成状态
     updateStatus(
       "completed",
       urls.length,
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`,
+      `✅ Completed!<br>📂 Processed: ${processedCount}/${urls.length}`,
     );
 
     // 5秒后移除状态面板

@@ -184,25 +184,21 @@ export default defineContentScript({
 
     console.log(`Total URLs collected: ${urls.length}`);
 
-    // 更新为准备打开状态
-    updateStatus(
-      "running",
-      urls.length,
-      `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`,
-    );
+    // 更新为打开中状态
+    updateStatus("running", urls.length, "🔄 Opening product pages...");
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     let openedTabsCount = 0;
     for (const url of urls) {
-      await sendMessage(Message.OPEN_TAB, `${url}`);
+      await sendMessage(Message.OPEN_TAB, url);
       openedTabsCount++;
 
-      // 更新状态，显示正在打开的标签页数量
+      // 更新状态，显示已打开的网页数量
       updateStatus(
         "running",
         urls.length,
-        `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`,
+        `🔄 Opening pages...<br>📂 Opened: ${openedTabsCount}/${urls.length}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -214,7 +210,7 @@ export default defineContentScript({
     updateStatus(
       "completed",
       urls.length,
-      `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`,
+      `✅ Completed!<br>📂 Opened: ${openedTabsCount}/${urls.length} pages`,
     );
 
     // 5秒后移除状态面板

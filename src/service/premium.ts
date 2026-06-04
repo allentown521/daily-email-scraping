@@ -16,11 +16,11 @@ async function getInstanceName() {
 }
 
 export async function activatePremium(
-  licenseKey: string
+  licenseKey: string,
 ): Promise<PremiumActivation> {
   const { instanceId, buyType } = await lemonsqueezy.activateLicense(
     licenseKey,
-    await getInstanceName()
+    await getInstanceName(),
   );
   const str: string = getLicenseType(buyType);
   const data = { licenseKey, instanceId, type: str };
@@ -36,7 +36,7 @@ export async function validatePremium() {
 
   return lemonsqueezy.validateLicense(
     activation.licenseKey,
-    activation.instanceId
+    activation.instanceId,
   );
 }
 
@@ -64,7 +64,7 @@ export async function deactivatePremium() {
   }
   await lemonsqueezy.deactivateLicense(
     activation.licenseKey,
-    activation.instanceId
+    activation.instanceId,
   );
   await chrome.storage.local.remove(premiumKey);
 }

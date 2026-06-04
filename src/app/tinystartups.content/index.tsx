@@ -169,23 +169,23 @@ export default defineContentScript({
 
     console.log(`Total URLs collected: ${articles.length}`);
 
-    // 更新为准备打开状态
+    // 更新为准备获取邮件状态
     updateStatus(
       "running",
       articles.length,
-      `🎉 Collection completed!<br>Preparing to open ${articles.length} tabs...`,
+      `🎉 Collection completed!<br>Scraping emails from ${articles.length} products...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    let openedTabsCount = 0;
+    let scrapedCount = 0;
     for (const article of articles) {
       if (article) {
-        console.log(`正在点击第 ${openedTabsCount + 1} 个 article 中的元素...`);
+        console.log(`正在点击第 ${scrapedCount + 1} 个 article 中的元素...`);
 
         // 在当前 article 内部查找你想点击的标签，比如 'button' 或 '.click-me'
         const target = article.querySelector("button");
         if (target) {
-          openedTabsCount++;
+          scrapedCount++;
 
           target.click();
           setTimeout(async () => {
@@ -196,34 +196,34 @@ export default defineContentScript({
                 href?.includes("tinystartups") &&
                 link.innerHTML.includes("Visit Website")
               ) {
-                // 更新状态，显示正在打开的标签页数量
+                // 更新状态，显示已刮取的邮件数量
                 updateStatus(
                   "running",
                   articles.length,
-                  `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${articles.length}`,
+                  `🔄 Scraping...<br>📧 Scraped: <strong style="color: #4CAF50;">${scrapedCount}</strong> / ${articles.length}`,
                 );
-                console.log(`正在打开第 ${openedTabsCount + 1} 个 tab...`);
-                await sendMessage(Message.OPEN_TAB, href);
+                console.log(`正在刮取第 ${scrapedCount} 个网站的邮件...`);
+                await sendMessage(Message.SCRAPE_EMAILS, href);
                 break;
               }
             }
           }, 1000);
 
-          // 等待一段时间，让浏览器完成打开新 tab 的操作
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          // 等待一段时间，让浏览器完成操作
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       } else {
-        console.warn(`第 ${openedTabsCount + 1} 个 article 中未找到目标元素`);
+        console.warn(`第 ${scrapedCount + 1} 个 article 中未找到目标元素`);
       }
     }
 
-    console.log(`All ${articles.length} tabs have been opened.`);
+    console.log(`Email scraping completed for ${articles.length} products.`);
 
     // 最后更新为完成状态
     updateStatus(
       "completed",
       articles.length,
-      `🎉 Task completed!<br>📂 Opened ${articles.length} tabs`,
+      `🎉 Task completed!<br>📧 Scraped ${articles.length} products`,
     );
 
     // 5秒后移除状态面板

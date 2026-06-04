@@ -54,13 +54,13 @@ const LayoutContent = ({
             theme === Theme.DARK ||
             (theme === Theme.SYSTEM &&
               window.matchMedia("(prefers-color-scheme: dark)").matches),
-        }
+        },
       )}
     >
       <div
         className={cn(
           "flex w-full max-w-[80rem] grow flex-col items-center justify-between gap-12 p-5",
-          className
+          className,
         )}
       >
         {children}

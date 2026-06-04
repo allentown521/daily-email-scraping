@@ -76,7 +76,7 @@ export default defineContentScript({
           document.body.appendChild(panel);
           console.log(
             "Status panel created and attached to body with ID:",
-            statusPanelId
+            statusPanelId,
           );
 
           // 添加一个 MutationObserver 来监控面板是否被意外移除
@@ -116,7 +116,7 @@ export default defineContentScript({
       setTimeout(() => {
         if (!document.body.contains(panel)) {
           console.log(
-            "Panel still not in DOM after creation, forcing re-add..."
+            "Panel still not in DOM after creation, forcing re-add...",
           );
           document.body.appendChild(panel);
         }
@@ -148,10 +148,10 @@ export default defineContentScript({
               status === "running"
                 ? "Scrolling"
                 : status === "paused"
-                ? "Paused"
-                : status === "completed"
-                ? "Completed"
-                : "Error"
+                  ? "Paused"
+                  : status === "completed"
+                    ? "Completed"
+                    : "Error"
             }
           </strong>
         </div>
@@ -167,7 +167,7 @@ export default defineContentScript({
       `;
 
       console.log(
-        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`
+        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`,
       );
     };
 
@@ -189,7 +189,7 @@ export default defineContentScript({
           "paused",
           urls.length,
           `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return"
+          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return",
         );
         return false;
       }
@@ -208,7 +208,7 @@ export default defineContentScript({
         "running",
         urls.length,
         `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-        "✨ Resuming scroll..."
+        "✨ Resuming scroll...",
       );
     }
 
@@ -232,11 +232,11 @@ export default defineContentScript({
       `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
       `📍 Position: ${Math.round(window.scrollY)}/${
         document.body.scrollHeight
-      }px`
+      }px`,
     );
 
     console.log(
-      `Scrolling completed. Total img elements collected: ${imgElements.length}`
+      `Scrolling completed. Total img elements collected: ${imgElements.length}`,
     );
 
     // 更新为完成状态
@@ -244,7 +244,7 @@ export default defineContentScript({
       "completed",
       imgElements.length,
       "100%",
-      `🎉 Scroll completed!<br>Preparing to click ${imgElements.length} images...`
+      `🎉 Scroll completed!<br>Preparing to click ${imgElements.length} images...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -256,21 +256,23 @@ export default defineContentScript({
         const rect = img.getBoundingClientRect();
         const style = window.getComputedStyle(img);
         const parentElement = img.parentElement;
-        const parentStyle = parentElement ? window.getComputedStyle(parentElement) : null;
-        
+        const parentStyle = parentElement
+          ? window.getComputedStyle(parentElement)
+          : null;
+
         console.log(`Img element ${clickedCount + 1}:`, {
           src: img.src.substring(0, 100) + "...",
           alt: img.alt,
           className: img.className,
           parentElement:
             parentElement?.tagName +
-            (parentElement?.className
-              ? "." + parentElement.className
-              : ""),
+            (parentElement?.className ? "." + parentElement.className : ""),
           parentHasOnclick: !!parentElement?.onclick,
           parentHref: parentElement?.href,
           parentDataset: parentElement?.dataset,
-          parentIsClickable: parentStyle ? parentStyle.pointerEvents !== "none" : false,
+          parentIsClickable: parentStyle
+            ? parentStyle.pointerEvents !== "none"
+            : false,
           parentCursor: parentStyle?.cursor,
           isVisible: style.visibility !== "hidden" && style.display !== "none",
           isClickable: style.pointerEvents !== "none",
@@ -296,41 +298,69 @@ export default defineContentScript({
               currentElement = currentElement.parentElement;
               // 检查是否有href
               if (currentElement.href) {
-                console.log(`Found parent with href at level ${i + 1}:`, currentElement.href);
+                console.log(
+                  `Found parent with href at level ${i + 1}:`,
+                  currentElement.href,
+                );
                 return currentElement;
               }
               // 检查是否有onclick
-              if (currentElement.onclick || currentElement.getAttribute('onclick')) {
+              if (
+                currentElement.onclick ||
+                currentElement.getAttribute("onclick")
+              ) {
                 console.log(`Found parent with onclick at level ${i + 1}`);
                 return currentElement;
               }
               // 检查常见的点击类名
-              const className = currentElement.className || '';
-              if (className.includes('click') || className.includes('link') || className.includes('button')) {
-                console.log(`Found parent with clickable class at level ${i + 1}:`, className);
+              const className = currentElement.className || "";
+              if (
+                className.includes("click") ||
+                className.includes("link") ||
+                className.includes("button")
+              ) {
+                console.log(
+                  `Found parent with clickable class at level ${i + 1}:`,
+                  className,
+                );
                 return currentElement;
               }
               // 检查data属性
-              if (currentElement.dataset.href || currentElement.dataset.link || currentElement.dataset.url) {
-                const dataUrl = currentElement.dataset.href || currentElement.dataset.link || currentElement.dataset.url;
-                console.log(`Found parent with data URL at level ${i + 1}:`, dataUrl);
+              if (
+                currentElement.dataset.href ||
+                currentElement.dataset.link ||
+                currentElement.dataset.url
+              ) {
+                const dataUrl =
+                  currentElement.dataset.href ||
+                  currentElement.dataset.link ||
+                  currentElement.dataset.url;
+                console.log(
+                  `Found parent with data URL at level ${i + 1}:`,
+                  dataUrl,
+                );
                 return currentElement;
               }
             }
           }
-          
+
           // 检查img本身
-          if (img.onclick || img.href || img.getAttribute('onclick')) {
+          if (img.onclick || img.href || img.getAttribute("onclick")) {
             console.log("Img is clickable");
             return img;
           }
-          
+
           // 在img中心位置找到最顶层的元素
           const centerX = rect.left + rect.width / 2;
           const centerY = rect.top + rect.height / 2;
           const elementAtPoint = document.elementFromPoint(centerX, centerY);
-          console.log("Element at click point:", elementAtPoint?.tagName, elementAtPoint?.className, elementAtPoint?.href);
-          
+          console.log(
+            "Element at click point:",
+            elementAtPoint?.tagName,
+            elementAtPoint?.className,
+            elementAtPoint?.href,
+          );
+
           return elementAtPoint || currentElement || img;
         };
 
@@ -343,11 +373,15 @@ export default defineContentScript({
             const targetRect = clickableTarget.getBoundingClientRect();
             const centerX = targetRect.left + targetRect.width / 2;
             const centerY = targetRect.top + targetRect.height / 2;
-            
-            console.log("Method 1: Hover + click on target:", clickableTarget.tagName, clickableTarget.href || clickableTarget.className);
-            
+
+            console.log(
+              "Method 1: Hover + click on target:",
+              clickableTarget.tagName,
+              clickableTarget.href || clickableTarget.className,
+            );
+
             // 先触发完整的hover事件序列
-            const hoverEvents = ['mouseover', 'mouseenter', 'mousemove'];
+            const hoverEvents = ["mouseover", "mouseenter", "mousemove"];
             for (const eventType of hoverEvents) {
               const event = new MouseEvent(eventType, {
                 view: window,
@@ -358,14 +392,14 @@ export default defineContentScript({
                 relatedTarget: document.body,
               });
               clickableTarget.dispatchEvent(event);
-              await new Promise(resolve => setTimeout(resolve, 50));
+              await new Promise((resolve) => setTimeout(resolve, 50));
             }
-            
+
             // 等待hover效果完全生效
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
             // 然后触发完整的点击事件序列
-            const clickEvents = ['mousedown', 'mouseup', 'click'];
+            const clickEvents = ["mousedown", "mouseup", "click"];
             for (const eventType of clickEvents) {
               const event = new MouseEvent(eventType, {
                 view: window,
@@ -374,16 +408,20 @@ export default defineContentScript({
                 clientX: centerX,
                 clientY: centerY,
                 button: 0,
-                buttons: eventType === 'mousedown' ? 1 : 0,
+                buttons: eventType === "mousedown" ? 1 : 0,
               });
               clickableTarget.dispatchEvent(event);
-              await new Promise(resolve => setTimeout(resolve, 50));
+              await new Promise((resolve) => setTimeout(resolve, 50));
             }
           },
 
           // 2. 直接调用click方法（对href元素最有效）
           () => {
-            console.log("Method 2: Direct click() call on:", clickableTarget.tagName, clickableTarget.href);
+            console.log(
+              "Method 2: Direct click() call on:",
+              clickableTarget.tagName,
+              clickableTarget.href,
+            );
             clickableTarget.click();
           },
 
@@ -393,33 +431,40 @@ export default defineContentScript({
             const targetRect = clickableTarget.getBoundingClientRect();
             const centerX = targetRect.left + targetRect.width / 2;
             const centerY = targetRect.top + targetRect.height / 2;
-            
+
             // 先hover
-            clickableTarget.dispatchEvent(new MouseEvent('mouseover', {
-              view: window,
-              bubbles: true,
-              cancelable: true,
-              clientX: centerX,
-              clientY: centerY,
-            }));
-            
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
+            clickableTarget.dispatchEvent(
+              new MouseEvent("mouseover", {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: centerX,
+                clientY: centerY,
+              }),
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 200));
+
             // 再点击
-            clickableTarget.dispatchEvent(new MouseEvent('click', {
-              view: window,
-              bubbles: true,
-              cancelable: true,
-              clientX: centerX,
-              clientY: centerY,
-            }));
+            clickableTarget.dispatchEvent(
+              new MouseEvent("click", {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: centerX,
+                clientY: centerY,
+              }),
+            );
           },
 
           // 4. 强制打开href链接
           () => {
             if (clickableTarget.href) {
-              console.log("Method 4: Force opening href:", clickableTarget.href);
-              window.open(clickableTarget.href, '_blank');
+              console.log(
+                "Method 4: Force opening href:",
+                clickableTarget.href,
+              );
+              window.open(clickableTarget.href, "_blank");
             } else {
               console.log("Method 4: No href found");
             }
@@ -427,10 +472,17 @@ export default defineContentScript({
 
           // 5. 检查并点击data-url或data-href
           () => {
-            if (clickableTarget.dataset.href || clickableTarget.dataset.url || clickableTarget.dataset.link) {
-              const url = clickableTarget.dataset.href || clickableTarget.dataset.url || clickableTarget.dataset.link;
+            if (
+              clickableTarget.dataset.href ||
+              clickableTarget.dataset.url ||
+              clickableTarget.dataset.link
+            ) {
+              const url =
+                clickableTarget.dataset.href ||
+                clickableTarget.dataset.url ||
+                clickableTarget.dataset.link;
               console.log("Method 5: Opening data URL:", url);
-              window.open(url, '_blank');
+              window.open(url, "_blank");
             } else {
               console.log("Method 5: No data URL found");
             }
@@ -438,10 +490,18 @@ export default defineContentScript({
 
           // 6. 尝试父元素的data属性
           () => {
-            if (parentElement && (parentElement.dataset.href || parentElement.dataset.url || parentElement.dataset.link)) {
-              const url = parentElement.dataset.href || parentElement.dataset.url || parentElement.dataset.link;
+            if (
+              parentElement &&
+              (parentElement.dataset.href ||
+                parentElement.dataset.url ||
+                parentElement.dataset.link)
+            ) {
+              const url =
+                parentElement.dataset.href ||
+                parentElement.dataset.url ||
+                parentElement.dataset.link;
               console.log("Method 6: Opening parent data URL:", url);
-              window.open(url, '_blank');
+              window.open(url, "_blank");
             } else {
               console.log("Method 6: No parent data URL found");
             }
@@ -450,34 +510,36 @@ export default defineContentScript({
           // 7. 强制触发所有可能的点击事件
           () => {
             console.log("Method 7: Triggering all click events");
-            const allEvents = ['click', 'dblclick', 'contextmenu'];
-            allEvents.forEach(eventType => {
-              clickableTarget.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
+            const allEvents = ["click", "dblclick", "contextmenu"];
+            allEvents.forEach((eventType) => {
+              clickableTarget.dispatchEvent(
+                new Event(eventType, { bubbles: true, cancelable: true }),
+              );
             });
           },
 
           // 8. 绕过事件阻止，直接强制执行点击
           () => {
             console.log("Method 8: Force click bypassing preventDefault");
-            
+
             // 创建一个不会被阻止的点击事件
             const forceClick = (element) => {
               const rect = element.getBoundingClientRect();
-              const clickEvent = new MouseEvent('click', {
+              const clickEvent = new MouseEvent("click", {
                 view: window,
                 bubbles: true,
                 cancelable: false, // 关键：设置为不可取消
                 clientX: rect.left + rect.width / 2,
                 clientY: rect.top + rect.height / 2,
               });
-              
+
               // 在元素上直接触发，不允许被阻止
               try {
                 element.dispatchEvent(clickEvent);
               } catch (e) {
                 console.log("Direct dispatch failed, trying alternative");
               }
-              
+
               // 如果元素有onclick函数，直接调用
               if (element.onclick) {
                 try {
@@ -486,17 +548,17 @@ export default defineContentScript({
                   console.log("Onclick execution failed:", e);
                 }
               }
-              
+
               // 如果有href属性，直接打开
               if (element.href) {
                 console.log("Opening href directly");
-                window.open(element.href, '_blank');
+                window.open(element.href, "_blank");
                 return true;
               }
-              
+
               return false;
             };
-            
+
             // 尝试在多个元素上强制点击
             const elementsToTry = [clickableTarget, parentElement, img];
             for (const elem of elementsToTry) {
@@ -511,7 +573,7 @@ export default defineContentScript({
             if (parentElement && parentElement !== clickableTarget) {
               console.log("Method 9: Trying parent element");
               parentElement.click();
-              await new Promise(resolve => setTimeout(resolve, 500));
+              await new Promise((resolve) => setTimeout(resolve, 500));
             }
           },
         ];
@@ -533,31 +595,43 @@ export default defineContentScript({
             const hasNewWindow = newWindowCount > originalWindowCount;
             const wasPrevented = clickableTarget.onclick === null;
             const targetHref = clickableTarget.href;
-            const targetDataHref = clickableTarget.dataset.href || clickableTarget.dataset.url || clickableTarget.dataset.link;
-            
+            const targetDataHref =
+              clickableTarget.dataset.href ||
+              clickableTarget.dataset.url ||
+              clickableTarget.dataset.link;
+
             console.log(`Click method ${index + 1} results:`, {
               newWindowCount: `${originalWindowCount} -> ${newWindowCount}`,
               hasNewWindow,
               targetHref,
               targetDataHref,
-              wasPrevented
+              wasPrevented,
             });
 
             // 如果有新窗口打开，说明点击成功
             if (hasNewWindow) {
               clickSuccess = true;
-              console.log(`Click method ${index + 1} SUCCESS: New window opened`);
-              break;
-            }
-            
-            // 如果是方法4、5、6、8（强制打开URL）并且有新窗口或数据URL，也认为成功
-            if ((index === 4 || index === 5 || index === 6 || index === 8) && (targetHref || targetDataHref)) {
-              clickSuccess = true;
-              console.log(`Click method ${index + 1} SUCCESS: Force opened URL`);
+              console.log(
+                `Click method ${index + 1} SUCCESS: New window opened`,
+              );
               break;
             }
 
-            console.log(`Click method ${index + 1} executed but no new window detected`);
+            // 如果是方法4、5、6、8（强制打开URL）并且有新窗口或数据URL，也认为成功
+            if (
+              (index === 4 || index === 5 || index === 6 || index === 8) &&
+              (targetHref || targetDataHref)
+            ) {
+              clickSuccess = true;
+              console.log(
+                `Click method ${index + 1} SUCCESS: Force opened URL`,
+              );
+              break;
+            }
+
+            console.log(
+              `Click method ${index + 1} executed but no new window detected`,
+            );
           } catch (methodError) {
             console.warn(`Click method ${index + 1} failed:`, methodError);
           }
@@ -575,7 +649,7 @@ export default defineContentScript({
           "running",
           imgElements.length,
           "100%",
-          `🔄 Processing images...<br>🖱️ Processed: <strong style="color: #4CAF50;">${clickedCount}</strong> / ${imgElements.length}`
+          `🔄 Processing images...<br>🖱️ Processed: <strong style="color: #4CAF50;">${clickedCount}</strong> / ${imgElements.length}`,
         );
 
         await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -591,7 +665,7 @@ export default defineContentScript({
       "completed",
       imgElements.length,
       "100%",
-      `🎉 Task completed!<br>🖱️ Clicked ${clickedCount} images`
+      `🎉 Task completed!<br>🖱️ Clicked ${clickedCount} images`,
     );
 
     // 5秒后移除状态面板

@@ -6,6 +6,7 @@ import {
 } from "@/service/premium";
 import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
+import { useCollectedEmails } from "~/hooks/useCollectedEmails";
 import {
   checkIsInTrial,
   cn,
@@ -72,8 +73,10 @@ export const Main = ({ className, filename }: MainProps) => {
   }>({ isTrial: false, daysLeft: 0, hasStarted: false });
 
   const [fpHash, setFpHash] = useState("");
-  const [isContentScriptEnabled, setIsContentScriptEnabled] = useState(true); // 总开关，默认打开
-  const [showTooltip, setShowTooltip] = useState(false); // 控制tooltip显示
+  const [isContentScriptEnabled, setIsContentScriptEnabled] = useState(true);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const { emailCount, downloadCSV, clearAllEmails } = useCollectedEmails();
   const handleGroupCheckboxChange = (group: string) => {
     const isBeingSelected = !groupSelection[group]; // 是否被选中
 
@@ -446,7 +449,7 @@ export const Main = ({ className, filename }: MainProps) => {
 
     const today = new Date();
 
-    siteOptions.forEach((site) => {
+    for (const site of siteOptions) {
       if (selectedSites[site.id]) {
         const url = typeof site.url === "function" ? site.url(today) : site.url;
         if (site.openInSingleBrowser) {
@@ -455,7 +458,7 @@ export const Main = ({ className, filename }: MainProps) => {
           browser.tabs.create({ url });
         }
       }
-    });
+    }
   };
 
   async function activateLicense() {
@@ -713,6 +716,45 @@ export const Main = ({ className, filename }: MainProps) => {
                 ? `🎯 Start Scraping (${trialInfo.daysLeft} days left)`
                 : "🔒 Premium Required"}
         </Button>
+
+        {/* Email Statistics Card */}
+        <Card className="mt-6 w-full bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Email Collection</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Total Count */}
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+              <span className="text-sm text-gray-600">
+                Total Emails Collected
+              </span>
+              <span className="text-2xl font-bold text-primary">
+                {emailCount}
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={downloadCSV}
+                disabled={emailCount === 0}
+                variant="outline"
+                className="flex items-center justify-center gap-2 text-sm"
+              >
+                📥 Download CSV
+              </Button>
+              <Button
+                onClick={clearAllEmails}
+                disabled={emailCount === 0}
+                variant="outline"
+                className="flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700"
+              >
+                🗑️ Clear All
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <div id="purchase" className="my-8">
           <div className="mb-6 text-center">
             <h2 className="mb-2 text-2xl font-bold text-gray-900">

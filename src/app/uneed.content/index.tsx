@@ -65,7 +65,7 @@ export default defineContentScript({
           document.body.appendChild(panel);
           console.log(
             "Status panel created and attached to body with ID:",
-            statusPanelId
+            statusPanelId,
           );
 
           // 添加一个 MutationObserver 来监控面板是否被意外移除
@@ -105,7 +105,7 @@ export default defineContentScript({
       setTimeout(() => {
         if (!document.body.contains(panel)) {
           console.log(
-            "Panel still not in DOM after creation, forcing re-add..."
+            "Panel still not in DOM after creation, forcing re-add...",
           );
           document.body.appendChild(panel);
         }
@@ -135,8 +135,8 @@ export default defineContentScript({
               status === "running"
                 ? "Collecting"
                 : status === "completed"
-                ? "Completed"
-                : "Error"
+                  ? "Completed"
+                  : "Error"
             }
           </strong>
         </div>
@@ -180,37 +180,37 @@ export default defineContentScript({
       });
       console.log(`Total URLs collected: ${urls.length}`);
 
-      // 更新为准备打开状态
+      // 更新为准备获取邮件状态
       updateStatus(
         "running",
         urls.length,
-        `🎉 Collection completed!<br>Preparing to open ${urls.length} tabs...`
+        `🎉 Collection completed!<br>Scraping emails from ${urls.length} products...`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      let openedTabsCount = 0;
+      let scrapedCount = 0;
       for (const url of urls) {
-        await sendMessage(Message.OPEN_TAB, `${url}`);
-        openedTabsCount++;
+        await sendMessage(Message.SCRAPE_EMAILS, url);
+        scrapedCount++;
 
-        // 更新状态，显示正在打开的标签页数量
+        // 更新状态，显示已刮取的邮件数量
         updateStatus(
           "running",
           urls.length,
-          `🔄 Scraping...<br>📂 Opened: <strong style="color: #4CAF50;">${openedTabsCount}</strong> / ${urls.length}`
+          `🔄 Scraping...<br>📧 Scraped: <strong style="color: #4CAF50;">${scrapedCount}</strong> / ${urls.length}`,
         );
 
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      console.log(`All ${urls.length} tabs have been opened.`);
+      console.log(`Email scraping completed for ${urls.length} products.`);
 
       // 最后更新为完成状态
       updateStatus(
         "completed",
         urls.length,
-        `🎉 Task completed!<br>📂 Opened ${urls.length} tabs`
+        `🎉 Task completed!<br>📧 Scraped ${urls.length} products`,
       );
 
       // 5秒后移除状态面板
