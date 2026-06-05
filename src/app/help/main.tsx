@@ -2,54 +2,26 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import clearEmailList from "~/assets/clear-email-list.png";
-import openEmailList from "~/assets/open-email-list.png";
+import openEmailList from "~/assets/download-email-list.png";
 import { Layout } from "~/components/layout/layout";
 
 const Help = () => {
   const steps = [
     {
       number: 1,
-      title: "Install Email Finder Extension",
+      title: "Open Email Scraper Extension",
       description:
-        "Install the Email Finder browser extension from Chrome Web Store",
-      details: (
-        <a
-          href="https://chromewebstore.google.com/detail/email-finder-email-hunter/aihgkhchhecmambgbonicffgneidgclh"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 underline"
-        >
-          Install Email Finder Extension
-        </a>
-      ),
-      image: null,
-    },
-    {
-      number: 2,
-      title: "Manage Email List",
-      description: "Click the Email Finder icon to open the scraped email list",
-      details: (
-        <p>Clear the saved email list before starting a new scraping session</p>
-      ),
-      image: {
-        open: openEmailList,
-        clear: clearEmailList,
-      },
-    },
-    {
-      number: 3,
-      title: "Open Product Hunt Email Scrap",
-      description:
-        "Click the Product Hunt Email Scrap icon or open it from the sidebar",
+        "Click the Email Scraper icon to open the main scraping interface",
       details: (
         <p>
-          This will open the main interface for selecting websites to scrape
+          The extension is built-in and ready to use. No additional extensions
+          are needed.
         </p>
       ),
       image: null,
     },
     {
-      number: 4,
+      number: 2,
       title: "Select Website and Frequency",
       description: "Choose 'Daily' or 'Weekly' or any supported website",
       details: (
@@ -61,39 +33,73 @@ const Help = () => {
           <li>
             For 'Weekly' websites: Execute on Sunday to scrape this week's data
           </li>
+          <li>Select one or multiple websites to scrape simultaneously</li>
         </ul>
       ),
       image: null,
     },
     {
-      number: 5,
+      number: 3,
       title: "Automatic Scraping Process",
       description:
-        "The extension will automatically open selected websites and all product official pages",
+        "The extension will automatically scrape emails from selected websites",
       details: (
         <ul className="list-disc list-inside space-y-1">
           <li>All product pages will be opened automatically</li>
           <li>
-            For Product Hunt and Peerlist: Pages will auto-scroll to the bottom
+            For Product Hunt and Peerlist: Pages will auto-scroll to load all
+            products
           </li>
-          <li>
-            Keep browser in foreground during scrolling (scrolling stops when
-            browser is in background)
-          </li>
+          <li>Emails are extracted from each product page automatically</li>
           <li>Pages will close automatically after scraping is complete</li>
+          <li>
+            Keep browser in foreground during scraping (scraping pauses in
+            background)
+          </li>
+        </ul>
+      ),
+      image: null,
+    },
+    {
+      number: 4,
+      title: "View and Manage Collected Emails",
+      description:
+        "See the collected emails in the statistics panel and manage them",
+      details: (
+        <ul className="list-disc list-inside space-y-1">
+          <li>Real-time counter shows total emails collected</li>
+          <li>View email sources (mailto links, contact pages, etc.)</li>
+          <li>Emails are automatically deduplicated</li>
+        </ul>
+      ),
+      image: {
+        open: openEmailList,
+        clear: clearEmailList,
+      },
+    },
+    {
+      number: 5,
+      title: "Download Email Data",
+      description: "Export collected emails as a CSV file for further use",
+      details: (
+        <ul className="list-disc list-inside space-y-1">
+          <li>Click 'Download CSV' button in the statistics panel</li>
+          <li>File includes email, source URL, and timestamp</li>
+          <li>File is named with current date (e.g., 6-4-emails.csv)</li>
         </ul>
       ),
       image: null,
     },
     {
       number: 6,
-      title: "Download Email Data",
+      title: "Clear History (Optional)",
       description:
-        "After all pages are closed (except the main scraping website), download the data",
+        "Clear the saved email list before starting a new scraping session",
       details: (
         <ul className="list-disc list-inside space-y-1">
-          <li>Click the Email Finder icon to open the scraped email list</li>
-          <li>Download the emails as CSV file</li>
+          <li>Click 'Clear All' button to delete all collected emails</li>
+          <li>This action cannot be undone, so make sure to export first</li>
+          <li>Recommended before each new scraping session</li>
         </ul>
       ),
       image: null,
@@ -147,7 +153,7 @@ const Help = () => {
                       {step.image.open && (
                         <div>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            Open Email List:
+                            Download Email List:
                           </p>
                           <img
                             src={step.image.open}
@@ -176,25 +182,48 @@ const Help = () => {
           ))}
         </div>
 
-        <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">
+            Key Features
+          </h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-blue-700 dark:text-blue-300">
+            <li>
+              Multi-level email extraction: Direct pages → Contact pages → Team
+              pages
+            </li>
+            <li>Automatic duplicate detection and removal</li>
+            <li>Supports multiple email formats and obfuscated emails</li>
+            <li>Filters test domains (@example.com, @test.com, etc.)</li>
+            <li>One-click CSV export with email source tracking</li>
+          </ul>
+        </div>
+
+        <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
             Important Notes
           </h3>
           <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
             <li>
-              Extensions automatically open the web page until the crawl is
-              complete, so you should always run the extension in a fixed
-              browser instance to avoid affecting normal use.
+              The extension automatically opens browser tabs for scraping, so
+              use a dedicated browser instance to avoid disrupting normal work
             </li>
-            <li>Keep your browser in foreground during the scraping process</li>
             <li>
-              Clear existing email list before starting new scraping session
+              Keep your browser in foreground during the scraping process
+              (scraping pauses when browser is in background)
+            </li>
+            <li>
+              Clear existing email list before starting a new scraping session
+              to avoid duplicates
             </li>
             <li>
               For daily websites, wait until after UTC 08:00 for best results
             </li>
             <li>
               For weekly websites, run on Sunday to get the complete week's data
+            </li>
+            <li>
+              Email data is stored locally in your browser and can be exported
+              at any time
             </li>
           </ul>
         </div>
