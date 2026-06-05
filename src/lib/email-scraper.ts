@@ -43,6 +43,15 @@ const TEST_DOMAINS = new Set([
   "example.co.uk",
   "mail.com",
 ]);
+
+const FILE_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "zip", "rar", "7z", "tar", "gz", "exe", "dmg", "apk",
+  "mp3", "mp4", "avi", "mov", "mkv", "wav", "flac",
+  "js", "ts", "jsx", "tsx", "py", "java", "go", "rs",
+  "html", "css", "json", "xml", "yaml", "toml", "ini",
+]);
 const OBFUSCATION_PATTERNS = [
   { pattern: /\[at\]/gi, replacement: "@" },
   { pattern: /\(at\)/gi, replacement: "@" },
@@ -127,14 +136,23 @@ function validateEmail(email: string): boolean {
     return false;
   }
 
-  // Filter out test domains
   const domain = normalized.split("@")[1]?.toLowerCase();
-  if (domain && TEST_DOMAINS.has(domain)) {
+  if (!domain) return false;
+
+  // Filter out test domains
+  if (TEST_DOMAINS.has(domain)) {
+    return false;
+  }
+
+  // Filter out file extensions (e.g., @1x.png, @icon.svg)
+  const topLevelDomain = domain.split(".").pop();
+  if (topLevelDomain && FILE_EXTENSIONS.has(topLevelDomain)) {
     return false;
   }
 
   return true;
 }
+
 
 function extractEmailsFromText(text: string): string[] {
   const emails = new Set<string>();
