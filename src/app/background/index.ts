@@ -47,8 +47,8 @@ onMessage(Message.AUTH_SUCCESS, (meessage) => {
 
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name.startsWith("closeTab_")) {
-    const tabId = Number.parseInt(alarm.name.split("_")[1]);
-    if (tabId) {
+    const tabId = Number.parseInt(alarm.name.split("_")[1] || "");
+    if (tabId && !Number.isNaN(tabId)) {
       browser.tabs.remove(tabId);
     }
   }
@@ -99,6 +99,7 @@ onMessage(Message.OPEN_TAB_AND_RETURN, async () => {
       browser.tabs.update(currentTab.id, { active: true });
     }, 3000);
   }
+  return null;
 });
 
 onMessage(Message.SCRAPE_EMAILS, async (message) => {

@@ -45,12 +45,51 @@ const TEST_DOMAINS = new Set([
 ]);
 
 const FILE_EXTENSIONS = new Set([
-  "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico",
-  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-  "zip", "rar", "7z", "tar", "gz", "exe", "dmg", "apk",
-  "mp3", "mp4", "avi", "mov", "mkv", "wav", "flac",
-  "js", "ts", "jsx", "tsx", "py", "java", "go", "rs",
-  "html", "css", "json", "xml", "yaml", "toml", "ini",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "bmp",
+  "svg",
+  "webp",
+  "ico",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "zip",
+  "rar",
+  "7z",
+  "tar",
+  "gz",
+  "exe",
+  "dmg",
+  "apk",
+  "mp3",
+  "mp4",
+  "avi",
+  "mov",
+  "mkv",
+  "wav",
+  "flac",
+  "js",
+  "ts",
+  "jsx",
+  "tsx",
+  "py",
+  "java",
+  "go",
+  "rs",
+  "html",
+  "css",
+  "json",
+  "xml",
+  "yaml",
+  "toml",
+  "ini",
 ]);
 const OBFUSCATION_PATTERNS = [
   { pattern: /\[at\]/gi, replacement: "@" },
@@ -74,6 +113,62 @@ const CANDIDATE_PATTERNS: Record<string, { pattern: RegExp; score: number }> = {
   impressum: { pattern: /\/impressum/i, score: 40 },
   team: { pattern: /\/team/i, score: 30 },
 };
+
+function isSkeleton(html: string): boolean {
+  const skeletonSignals = [
+    /<div\s+id=["']root["']\s*><\/div>/,
+    /<div\s+id=["']app["']\s*><\/div>/,
+  ];
+  return (
+    html.length < 10000 || skeletonSignals.some((signal) => signal.test(html))
+  );
+}
+
+export async function fetchWithBrowserTab(url: string): Promise<string> {
+  try {
+    const { browser } = await import("wxt/browser");
+    const tab = await browser.tabs.create({ url, active: false });
+    if (!tab.id) throw new Error("Failed to create tab");
+
+    const tabId = tab.id;
+    return new Promise<string>((resolve) => {
+      const timeout = setTimeout(() => {
+        browser.tabs.remove(tabId).catch(() => {});
+        resolve("");
+      }, 15000);
+
+      const listener = async (
+        tid: number,
+        changeInfo: { status?: string },
+      ) => {
+        if (tid === tabId && changeInfo.status === "complete") {
+          try {
+            const results = await browser.scripting.executeScript({
+              target: { tabId },
+              func: () => document.documentElement.outerHTML,
+            });
+            const html = (results?.[0]?.result as string) || "";
+            clearTimeout(timeout);
+            browser.tabs.onUpdated.removeListener(listener);
+            browser.tabs.remove(tabId).catch(() => {});
+            resolve(html);
+          } catch (error) {
+            console.error("Failed to get HTML:", error);
+            clearTimeout(timeout);
+            browser.tabs.onUpdated.removeListener(listener);
+            browser.tabs.remove(tabId).catch(() => {});
+            resolve("");
+          }
+        }
+      };
+
+      browser.tabs.onUpdated.addListener(listener);
+    });
+  } catch (error) {
+    console.error("Error fetching with browser tab:", error);
+    return "";
+  }
+}
 
 async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
   const controller = new AbortController();
@@ -100,7 +195,17 @@ async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
       return "";
     }
 
-    return await response.text();
+    let html = await response.text();
+
+    // Check if it's skeleton content
+    if (isSkeleton(html)) {
+      const browserHtml = await fetchWithBrowserTab(url);
+      if (browserHtml) {
+        html = browserHtml;
+      }
+    }
+
+    return html;
   } catch (error) {
     clearTimeout(id);
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -153,7 +258,6 @@ function validateEmail(email: string): boolean {
   return true;
 }
 
-
 function extractEmailsFromText(text: string): string[] {
   const emails = new Set<string>();
 
@@ -161,7 +265,7 @@ function extractEmailsFromText(text: string): string[] {
   const mailtoRegex = /mailto:([^"'?\s>]+)/gi;
   const mailtoMatches = text.matchAll(mailtoRegex);
   for (const match of mailtoMatches) {
-    const email = normalizeEmail(match[1]);
+    const email = normalizeEmail(match[1] || "");
     if (validateEmail(email)) {
       emails.add(email);
     }
@@ -190,6 +294,7 @@ function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
   const matches = html.matchAll(hrefRegex);
   for (const match of matches) {
     const href = match[1];
+    if (!href) continue;
 
     // Skip non-http/https links
     if (
