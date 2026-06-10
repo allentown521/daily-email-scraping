@@ -137,10 +137,7 @@ export async function fetchWithBrowserTab(url: string): Promise<string> {
         resolve("");
       }, 15000);
 
-      const listener = async (
-        tid: number,
-        changeInfo: { status?: string },
-      ) => {
+      const listener = async (tid: number, changeInfo: { status?: string }) => {
         if (tid === tabId && changeInfo.status === "complete") {
           try {
             const results = await browser.scripting.executeScript({
@@ -170,47 +167,56 @@ export async function fetchWithBrowserTab(url: string): Promise<string> {
   }
 }
 
-async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
+const HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.5",
+  "Accept-Encoding": "gzip, deflate",
+  DNT: "1",
+  Connection: "keep-alive",
+  "Upgrade-Insecure-Requests": "1",
+};
+
+async function attemptFetch(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  const id = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate",
-        DNT: "1",
-        Connection: "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-      },
+      headers: HEADERS,
     });
     clearTimeout(id);
 
-    if (!response.ok) {
-      return "";
-    }
+    if (!response.ok) return "";
 
     let html = await response.text();
-
-    // Check if it's skeleton content
     if (isSkeleton(html)) {
       const browserHtml = await fetchWithBrowserTab(url);
-      if (browserHtml) {
-        html = browserHtml;
-      }
+      if (browserHtml) html = browserHtml;
     }
-
     return html;
   } catch (error) {
     clearTimeout(id);
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.warn(`Failed to fetch ${url}:`, errorMsg);
-    return "";
+    throw error;
+  }
+}
+
+async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
+  try {
+    return await attemptFetch(url, timeout);
+  } catch (error) {
+    console.warn(`Failed to fetch ${url}:`, error);
+    try {
+      return await attemptFetch(url, timeout);
+    } catch (retryError) {
+      const errorMsg =
+        retryError instanceof Error ? retryError.message : String(retryError);
+      console.error(`Failed to fetch ${url} after retry:`, errorMsg);
+      return "";
+    }
   }
 }
 
