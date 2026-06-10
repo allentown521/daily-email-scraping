@@ -51,6 +51,7 @@ export const Main = ({ className, filename }: MainProps) => {
     foundrlist: false,
     tinystartups: false,
     startupfame: false,
+    ideakiln: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -127,6 +128,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.launchitx = true;
         newSelection.tinystartups = true;
         newSelection.startupfame = true;
+        newSelection.ideakiln = true;
         //newSelection.peerpush = true;
       }
 
@@ -264,6 +266,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "startupfame",
       name: "startupfame",
       url: "https://startupfa.me/",
+    },
+    {
+      id: "ideakiln",
+      name: "ideakiln",
+      url: "https://ideakiln.com/ideas/today",
     },
     /*     {
       id: "launchigniter",
@@ -597,6 +604,7 @@ export const Main = ({ className, filename }: MainProps) => {
               "launchitx",
               "tinystartups",
               "startupfame",
+              "ideakiln",
             ].map((siteId) => {
               const site = siteOptions.find((s) => s.id === siteId);
               return site ? (
