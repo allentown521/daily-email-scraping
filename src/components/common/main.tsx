@@ -50,6 +50,7 @@ export const Main = ({ className, filename }: MainProps) => {
     nxgntools: false,
     foundrlist: false,
     tinystartups: false,
+    startupfame: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -125,6 +126,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.auraplusplus = true;
         newSelection.launchitx = true;
         newSelection.tinystartups = true;
+        newSelection.startupfame = true;
         //newSelection.peerpush = true;
       }
 
@@ -257,6 +259,11 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "tinystartups",
       name: "tinystartups",
       url: "https://www.tinystartups.com/",
+    },
+    {
+      id: "startupfame",
+      name: "startupfame",
+      url: "https://startupfa.me/",
     },
     /*     {
       id: "launchigniter",
@@ -589,6 +596,7 @@ export const Main = ({ className, filename }: MainProps) => {
               "auraplusplus",
               "launchitx",
               "tinystartups",
+              "startupfame",
             ].map((siteId) => {
               const site = siteOptions.find((s) => s.id === siteId);
               return site ? (
