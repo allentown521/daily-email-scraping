@@ -301,7 +301,7 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
 async function verifyEmail(email: string): Promise<boolean> {
   try {
     const response = await fetch(
-      "https://api.reacher.focusapps.app/v1/check_emailL",
+      "https://api.reacher.focusapps.app/v1/check_email",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -312,10 +312,13 @@ async function verifyEmail(email: string): Promise<boolean> {
     if (data.is_reachable !== "invalid") {
       return true;
     }
+    console.warn(
+      `[verifyEmail] Email is invalid, skipped: ${email} reason: ${data.is_reachable}`,
+    );
     return false;
-  } catch {
+  } catch (error) {
     // API call failed, fail open
-    console.error(`[verifyEmail] API call failed for email: ${email}`);
+    console.error(`[verifyEmail] API call failed for email: ${email}`, error);
     return true;
   }
 }
