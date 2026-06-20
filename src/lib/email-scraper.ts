@@ -291,6 +291,35 @@ function extractEmailsFromText(text: string): string[] {
 
 export { extractEmailsFromText, normalizeEmail, validateEmail };
 
+/**
+ * Verifies an email address by checking its reachability via the Reacher API.
+ * Returns `true` if the email is reachable or the API call fails (fail-open policy),
+ * and `false` only when the API explicitly reports the email as "invalid".
+ * @param email - The email address to verify
+ * @returns `true` if the email is not invalid or the API call fails; `false` if the email is confirmed invalid
+ */
+async function verifyEmail(email: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      "https://api.reacher.focusapps.app/v1/check_emailL",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to_email: email }),
+      },
+    );
+    const data = (await response.json()) as { is_reachable?: string };
+    if (data.is_reachable !== "invalid") {
+      return true;
+    }
+    return false;
+  } catch {
+    // API call failed, fail open
+    console.error(`[verifyEmail] API call failed for email: ${email}`);
+    return true;
+  }
+}
+
 function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
   const candidates: CandidateLink[] = [];
   const hrefRegex = /href=["']([^"']+)["']/gi;
@@ -400,26 +429,38 @@ export async function scrapeEmails(url: string): Promise<ScrapedEmail[]> {
 
     if (level1Emails.length > 0) {
       for (const email of level1Emails) {
-        scrapedEmails.push({
-          email,
-          foundOn: url,
-          timestamp,
-          source: "mailto",
-        });
+        const isReachable = await verifyEmail(email);
+        if (isReachable) {
+          scrapedEmails.push({
+            email,
+            foundOn: url,
+            timestamp,
+            source: "mailto",
+          });
+        } else {
+          console.warn(`[verifyEmail] Email is unreachable, skipped: ${email}`);
+        }
       }
-      return scrapedEmails;
+      if (scrapedEmails.length > 0) {
+        return scrapedEmails;
+      }
     }
 
     // Level 2 & 3: Candidate pages
     const level23Emails = await scrapeLevel2and3(url, html);
     if (level23Emails.length > 0) {
       for (const email of level23Emails) {
-        scrapedEmails.push({
-          email,
-          foundOn: url,
-          timestamp,
-          source: "contact-page",
-        });
+        const isReachable = await verifyEmail(email);
+        if (isReachable) {
+          scrapedEmails.push({
+            email,
+            foundOn: url,
+            timestamp,
+            source: "contact-page",
+          });
+        } else {
+          console.warn(`[verifyEmail] Email is unreachable, skipped: ${email}`);
+        }
       }
     }
 
