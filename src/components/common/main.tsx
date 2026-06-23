@@ -52,6 +52,7 @@ export const Main = ({ className, filename }: MainProps) => {
     tinystartups: false,
     startupfame: false,
     ideakiln: false,
+    trylaunch: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -129,6 +130,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.tinystartups = true;
         newSelection.startupfame = true;
         newSelection.ideakiln = true;
+        newSelection.trylaunch = true;
         //newSelection.peerpush = true;
       }
 
@@ -271,6 +273,20 @@ export const Main = ({ className, filename }: MainProps) => {
       id: "ideakiln",
       name: "ideakiln",
       url: "https://ideakiln.com/ideas/today",
+    },
+    {
+      id: "trylaunch",
+      name: "trylaunch",
+      url: (date: Date) => {
+        const yesterday = new Date(date);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const year = yesterday.getFullYear();
+        const month = String(yesterday.getMonth() + 1).padStart(2, "0");
+        const dayOfMonth = String(yesterday.getDate()).padStart(2, "0");
+
+        return `https://trylaunch.ai/launches/${year}-${month}-${dayOfMonth}`;
+      },
     },
     /*     {
       id: "launchigniter",
@@ -605,6 +621,7 @@ export const Main = ({ className, filename }: MainProps) => {
               "tinystartups",
               "startupfame",
               "ideakiln",
+              "trylaunch",
             ].map((siteId) => {
               const site = siteOptions.find((s) => s.id === siteId);
               return site ? (
