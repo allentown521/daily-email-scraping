@@ -42,6 +42,16 @@ const TEST_DOMAINS = new Set([
   "test.co.uk",
   "example.co.uk",
   "mail.com",
+  "stripe.com",
+  "supabase.com",
+  "producthunt.com",
+]);
+
+const INCLUDE_TEST_DOMAINS = new Set([
+  "sentry.wixpress.com",
+  "your-domain.com",
+  "domain.com",
+  "sentry.io",
 ]);
 
 const FILE_EXTENSIONS = new Set([
@@ -251,7 +261,10 @@ function validateEmail(email: string): boolean {
   if (!domain) return false;
 
   // Filter out test domains
-  if (TEST_DOMAINS.has(domain)) {
+  if (
+    TEST_DOMAINS.has(domain) ||
+    [...INCLUDE_TEST_DOMAINS].some((item) => domain.includes(item))
+  ) {
     return false;
   }
 
