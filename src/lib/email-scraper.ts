@@ -299,7 +299,8 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
  * @returns `true` if the email is not invalid or the API call fails; `false` if the email is confirmed invalid
  */
 async function verifyEmail(email: string): Promise<boolean> {
-  try {
+  // 发现不太准确，很多返回invalid的邮件地址是可以发送的
+  /*   try {
     const response = await fetch(
       "https://api.reacher.focusapps.app/v1/check_email",
       {
@@ -320,6 +321,49 @@ async function verifyEmail(email: string): Promise<boolean> {
     // API call failed, fail open
     console.error(`[verifyEmail] API call failed for email: ${email}`, error);
     return true;
+  } */
+
+  const normalized = normalizeEmail(email);
+  const domain = normalized.split("@")[1]?.toLowerCase();
+  if (!domain) return false;
+  try {
+    // 💡 骚操作：同时并发查询 A 记录（网站）和 MX 记录（邮件）
+    const [resA, resMX] = await Promise.all([
+      fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=A`, {
+        headers: { Accept: "application/dns-json" },
+      }),
+      fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=MX`, {
+        headers: { Accept: "application/dns-json" },
+      }),
+    ]);
+
+    if (!resA.ok && !resMX.ok) {
+      // 如果 CF 接口偶尔挂了，使用 HEAD 方法，只连服务器探路，不下载任何网页内容，速度飞快
+      // mode: 'no-cors' 是核心，防止被对方网站的跨域策略（CORS）拦截
+      await fetch(`https://${domain}`, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-cache",
+      });
+      return true;
+    }
+
+    const dataA = await resA.json();
+    const dataMX = await resMX.json();
+
+    // 4. 审判：只有 Status 是 0 且真的有 Answer 解析结果，才算活域名
+    if (
+      (dataA.Status === 0 && dataA.Answer && dataA.Answer.length > 0) ||
+      (dataMX.Status === 0 && dataMX.Answer && dataMX.Answer.length > 0)
+    ) {
+      return true; // 捞回像 seadance-video.com 这种有网站但没 MX 记录的精准大鱼！
+    }
+    console.log(`[dns 不存在] ${domain} 无法解析或建立连接`);
+    return false;
+  } catch (err) {
+    // 连 HTTPS 都连不上，说明域名彻底挂了、或者根本不存在（如 testttttt.com）
+    console.log(`[官网无法连接] ${domain} 无法解析或建立连接`, err);
+    return false;
   }
 }
 
