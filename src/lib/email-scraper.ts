@@ -100,6 +100,7 @@ const FILE_EXTENSIONS = new Set([
   "yaml",
   "toml",
   "ini",
+  "avif",
 ]);
 const OBFUSCATION_PATTERNS = [
   { pattern: /\[at\]/gi, replacement: "@" },
