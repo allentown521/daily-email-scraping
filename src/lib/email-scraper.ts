@@ -315,8 +315,7 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
  * @returns `true` if the email is not invalid or the API call fails; `false` if the email is confirmed invalid
  */
 async function verifyEmail(email: string): Promise<boolean> {
-  // 发现不太准确，很多返回invalid的邮件地址是可以发送的
-  /*   try {
+  try {
     const response = await fetch(
       "https://api.reacher.focusapps.app/v1/check_email",
       {
@@ -337,7 +336,7 @@ async function verifyEmail(email: string): Promise<boolean> {
     // API call failed, fail open
     console.error(`[verifyEmail] API call failed for email: ${email}`, error);
     return true;
-  } */
+  }
 
   const normalized = normalizeEmail(email);
   const domain = normalized.split("@")[1]?.toLowerCase();
