@@ -45,14 +45,16 @@ const TEST_DOMAINS = new Set([
   "stripe.com",
   "supabase.com",
   "producthunt.com",
-]);
-
-const INCLUDE_TEST_DOMAINS = new Set([
-  "sentry.wixpress.com",
+  "n8n.io",
+  "google.com",
+  "vercel.com",
   "your-domain.com",
   "domain.com",
-  "sentry.io",
+  "zohomarketplace.com",
+  "frogybit.io",
 ]);
+
+const INCLUDE_TEST_DOMAINS = new Set(["sentry.wixpress.com", "sentry.io"]);
 
 const FILE_EXTENSIONS = new Set([
   "png",
