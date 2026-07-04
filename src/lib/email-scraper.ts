@@ -218,19 +218,28 @@ async function attemptFetch(url: string, timeoutMs: number): Promise<string> {
 }
 
 async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
-  try {
-    return await attemptFetch(url, timeout);
-  } catch (error) {
-    console.warn(`Failed to fetch ${url}:`, error);
+  const retryDelay = 100;
+  const maxRetries = 5;
+
+  for (let i = 0; i <= maxRetries; i++) {
     try {
       return await attemptFetch(url, timeout);
-    } catch (retryError) {
+    } catch (error) {
+      if (i === maxRetries) {
+        const errorMsg =
+          error instanceof Error ? error.message : String(error);
+        console.error(`Failed to fetch ${url} after ${maxRetries} retries:`, errorMsg);
+        return "";
+      }
       const errorMsg =
-        retryError instanceof Error ? retryError.message : String(retryError);
-      console.error(`Failed to fetch ${url} after retry:`, errorMsg);
-      return "";
+        error instanceof Error ? error.message : String(error);
+      console.warn(
+        `Failed to fetch ${url} (attempt ${i + 1}/${maxRetries + 1}): ${errorMsg}, retrying in ${retryDelay}ms...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
+  return "";
 }
 
 function normalizeEmail(email: string): string {
