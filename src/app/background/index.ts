@@ -9,6 +9,13 @@ const main = () => {
   console.log(
     "Background service worker is running! Edit `src/app/background` and save to reload.",
   );
+
+  // Enable side panel to open on toolbar icon click
+  if (chrome.sidePanel) {
+    chrome.sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: true })
+      .catch(console.error);
+  }
 };
 
 onMessage(Message.USER, () => {

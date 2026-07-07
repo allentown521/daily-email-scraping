@@ -13,6 +13,7 @@ interface LayoutProps {
   readonly loadingFallback?: React.ReactElement;
   readonly errorFallback?: React.ReactElement;
   readonly className?: string;
+  readonly containerClassName?: string;
 }
 
 const queryClient = new QueryClient();
@@ -22,12 +23,15 @@ export const Layout = ({
   loadingFallback,
   errorFallback,
   className,
+  containerClassName,
 }: LayoutProps) => {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary fallback={errorFallback}>
         <Suspense fallback={loadingFallback}>
-          <LayoutContent className={className}>{children}</LayoutContent>
+          <LayoutContent className={className} containerClassName={containerClassName}>
+            {children}
+          </LayoutContent>
         </Suspense>
       </ErrorBoundary>
     </QueryClientProvider>
@@ -37,9 +41,11 @@ export const Layout = ({
 const LayoutContent = ({
   children,
   className,
+  containerClassName,
 }: {
   readonly children: React.ReactNode;
   readonly className?: string;
+  readonly containerClassName?: string;
 }) => {
   const { data: theme } = useStorage(StorageKey.THEME);
   const { set: setUser } = useStorage(StorageKey.USER);
@@ -48,7 +54,8 @@ const LayoutContent = ({
   return (
     <div
       className={cn(
-        "flex min-h-screen bg-background text-foreground w-full min-w-[23rem] flex-col items-center justify-center font-sans text-base",
+        "flex min-h-screen bg-background text-foreground w-full flex-col items-center justify-center font-sans text-base",
+        containerClassName,
         {
           dark:
             theme === Theme.DARK ||

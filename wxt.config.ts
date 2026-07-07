@@ -16,6 +16,9 @@ export default defineConfig({
       "notifications",
       "scripting",
     ],
+    side_panel: {
+      default_path: "sidepanel.html",
+    },
   },
   srcDir: "src",
   entrypointsDir: "app",
