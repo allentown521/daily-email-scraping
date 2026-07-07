@@ -6,7 +6,7 @@ import { Layout } from "~/components/layout/layout";
 
 const SidePanel = () => {
   return (
-    <Layout containerClassName="min-w-[30rem]">
+    <Layout containerClassName="min-w-[56rem]">
       <Main className="w-full px-4" filename="app/sidepanel" />
     </Layout>
   );

@@ -542,7 +542,7 @@ export const Main = ({ className, filename }: MainProps) => {
         className,
       )}
     >
-      <div className="w-full max-w-md">
+      <div className="w-full">
         {/* 总开关 */}
         <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -622,41 +622,43 @@ export const Main = ({ className, filename }: MainProps) => {
                 Daily
               </label>
             </div>
-            {[
-              "productHunt",
-              "startupfast",
-              "uneed",
-              "fazier",
-              "openLaunch",
-              "firsto",
-              "auraplusplus",
-              "launchitx",
-              "tinystartups",
-              "startupfame",
-              "ideakiln",
-              "trylaunch",
-              "startupbase",
-            ].map((siteId) => {
-              const site = siteOptions.find((s) => s.id === siteId);
-              return site ? (
-                <div key={site.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={site.id}
-                    checked={selectedSites[site.id]}
-                    onChange={() => handleCheckboxChange(site.id)}
-                    disabled={!isContentScriptEnabled}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <label
-                    htmlFor={site.id}
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    {site.name}
-                  </label>
-                </div>
-              ) : null;
-            })}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                "productHunt",
+                "startupfast",
+                "uneed",
+                "fazier",
+                "openLaunch",
+                "firsto",
+                "auraplusplus",
+                "launchitx",
+                "tinystartups",
+                "startupfame",
+                "ideakiln",
+                "trylaunch",
+                "startupbase",
+              ].map((siteId) => {
+                const site = siteOptions.find((s) => s.id === siteId);
+                return site ? (
+                  <div key={site.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={site.id}
+                      checked={selectedSites[site.id]}
+                      onChange={() => handleCheckboxChange(site.id)}
+                      disabled={!isContentScriptEnabled}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label
+                      htmlFor={site.id}
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      {site.name}
+                    </label>
+                  </div>
+                ) : null;
+              })}
+            </div>
           </div>
 
           {/* This Week Column */}
@@ -677,29 +679,31 @@ export const Main = ({ className, filename }: MainProps) => {
                 this week
               </label>
             </div>
-            {["peerlist", "nxgntools", "openhunts", "foundrlist"].map(
-              (siteId) => {
-                const site = siteOptions.find((s) => s.id === siteId);
-                return site ? (
-                  <div key={site.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={site.id}
-                      checked={selectedSites[site.id]}
-                      onChange={() => handleCheckboxChange(site.id)}
-                      disabled={!isContentScriptEnabled}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <label
-                      htmlFor={site.id}
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      {site.name}
-                    </label>
-                  </div>
-                ) : null;
-              },
-            )}
+            <div className="grid grid-cols-2 gap-2">
+              {["peerlist", "nxgntools", "openhunts", "foundrlist"].map(
+                (siteId) => {
+                  const site = siteOptions.find((s) => s.id === siteId);
+                  return site ? (
+                    <div key={site.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={site.id}
+                        checked={selectedSites[site.id]}
+                        onChange={() => handleCheckboxChange(site.id)}
+                        disabled={!isContentScriptEnabled}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <label
+                        htmlFor={site.id}
+                        className="text-sm font-medium text-gray-700"
+                      >
+                        {site.name}
+                      </label>
+                    </div>
+                  ) : null;
+                },
+              )}
+            </div>
           </div>
 
           {/* Last Week Column */}
@@ -720,27 +724,29 @@ export const Main = ({ className, filename }: MainProps) => {
                 last week
               </label>
             </div>
-            {["tinylaunch"].map((siteId) => {
-              const site = siteOptions.find((s) => s.id === siteId);
-              return site ? (
-                <div key={site.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={site.id}
-                    checked={selectedSites[site.id]}
-                    onChange={() => handleCheckboxChange(site.id)}
-                    disabled={!isContentScriptEnabled}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <label
-                    htmlFor={site.id}
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    {site.name}
-                  </label>
-                </div>
-              ) : null;
-            })}
+            <div className="grid grid-cols-2 gap-2">
+              {["tinylaunch"].map((siteId) => {
+                const site = siteOptions.find((s) => s.id === siteId);
+                return site ? (
+                  <div key={site.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={site.id}
+                      checked={selectedSites[site.id]}
+                      onChange={() => handleCheckboxChange(site.id)}
+                      disabled={!isContentScriptEnabled}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label
+                      htmlFor={site.id}
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      {site.name}
+                    </label>
+                  </div>
+                ) : null;
+              })}
+            </div>
           </div>
         </div>
         <Button
