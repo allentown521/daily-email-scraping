@@ -53,6 +53,7 @@ export const Main = ({ className, filename }: MainProps) => {
     startupfame: false,
     ideakiln: false,
     trylaunch: false,
+    startupbase: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -131,6 +132,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.startupfame = true;
         newSelection.ideakiln = true;
         newSelection.trylaunch = true;
+        newSelection.startupbase = true;
         //newSelection.peerpush = true;
       }
 
@@ -286,6 +288,17 @@ export const Main = ({ className, filename }: MainProps) => {
         const dayOfMonth = String(yesterday.getDate()).padStart(2, "0");
 
         return `https://trylaunch.ai/launches/${year}-${month}-${dayOfMonth}`;
+      },
+    },
+    {
+      id: "startupbase",
+      name: "startupbase",
+      url: (date: Date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1; // getMonth() returns 0-11
+        const day = date.getDate();
+
+        return `https://startupbase.io/launches/daily/${year}/${month}/${day}`;
       },
     },
     /*     {
@@ -622,6 +635,7 @@ export const Main = ({ className, filename }: MainProps) => {
               "startupfame",
               "ideakiln",
               "trylaunch",
+              "startupbase",
             ].map((siteId) => {
               const site = siteOptions.find((s) => s.id === siteId);
               return site ? (
