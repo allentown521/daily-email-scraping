@@ -141,19 +141,27 @@ export default defineContentScript({
       const icon = statusIcons[status] || "🔄";
 
       panel.style.borderLeftColor = borderColor + " !important";
+
+      const statusLabel =
+        status === "running"
+          ? "Scrolling"
+          : status === "paused"
+            ? "Paused"
+            : status === "completed"
+              ? "Completed"
+              : "Error";
+
+      // completed 状态下显示 "Reopen All products" 按钮
+      const reopenButton =
+        status === "completed"
+          ? `<button id="reopen-all-products-btn" style="margin-top: 12px; width: 100%; padding: 8px 12px; background: #2196F3; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; pointer-events: auto !important;">Reopen All products</button>`
+          : "";
+
       panel.innerHTML = `
         <div style="display: flex; align-items: center; margin-bottom: 12px;">
           <span style="font-size: 24px; margin-right: 10px;">${icon}</span>
           <strong style="font-size: 16px; color: ${borderColor};">
-            ${
-              status === "running"
-                ? "Scrolling"
-                : status === "paused"
-                  ? "Paused"
-                  : status === "completed"
-                    ? "Completed"
-                    : "Error"
-            }
+            ${statusLabel}
           </strong>
         </div>
         <div style="font-size: 13px; color: #ccc; line-height: 1.6;">
@@ -165,10 +173,52 @@ export default defineContentScript({
               : ""
           }
         </div>
+        ${reopenButton}
       `;
+
+      // 绑定重新打开按钮的点击事件
+      if (status === "completed") {
+        const reopenBtn = panel.querySelector("#reopen-all-products-btn");
+        if (reopenBtn) {
+          reopenBtn.onclick = () => {
+            reopenAllProducts();
+          };
+        }
+      }
 
       console.log(
         `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`,
+      );
+    };
+
+    // 重新打开所有产品页面（不再重新抓取，直接复用已收集的 urls）
+    const reopenAllProducts = async () => {
+      // 重置状态
+      updateStatus("running", urls.length, "100%", "🔄 Reopening product pages...");
+
+      let reopenedCount = 0;
+      for (const url of urls) {
+        await sendMessage(Message.OPEN_TAB, url);
+        reopenedCount++;
+
+        // 实时显示已打开的网页数
+        updateStatus(
+          "running",
+          urls.length,
+          "100%",
+          `🔄 Reopening pages...<br>📂 Opened: ${reopenedCount}/${urls.length}`,
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
+      console.log(`All ${urls.length} tabs have been re-opened.`);
+
+      updateStatus(
+        "completed",
+        urls.length,
+        "100%",
+        `✅ Completed!<br>📂 Opened: ${reopenedCount}/${urls.length} pages`,
       );
     };
 
