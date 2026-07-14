@@ -109,6 +109,74 @@ onMessage(Message.OPEN_TAB_AND_RETURN, async () => {
   return null;
 });
 
+onMessage(Message.RESOLVE_REDIRECT, async (message) => {
+  try {
+    // 在后台打开链接，让浏览器自动完成跳转，
+    // 返回跳转后的最终 URL（例如 Product Hunt 的 /r/{token} → 产品官网）。
+    const tab = await browser.tabs.create({
+      url: message.data,
+      active: false,
+    });
+    if (!tab.id) return null;
+
+    const tabId = tab.id;
+    const finalUrl = await new Promise<string | null>((resolve) => {
+      let settled = false;
+      const finish = (url: string | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        browser.tabs.onUpdated.removeListener(listener);
+        browser.tabs.remove(tabId).catch(() => {});
+        resolve(url);
+      };
+
+      // Product Hunt 的 /r/{token} 由 Cloudflare 保护：标签页会先停在
+      // producthunt.com/r/... 的中转页上，随后才真正跳转到外部官网。
+      // 因此必须以“URL 真正离开 producthunt.com/r/”作为完成条件，
+      // 而不能在第一次 status=complete（仍是 PH 中转页）时就取值，否则
+      // 拿到的是 PH 中转页地址，SCRAPE_EMAILS 用 fetch 直接 403，抓不到邮件。
+      // 没真正跳转成功就返回 null，让 content script 退回原始 /r/ 链接、
+      // 走 email-scraper 自带的浏览器标签兜底逻辑。
+      const isResolved = (u?: string | null) =>
+        !!u && !u.startsWith("https://www.producthunt.com/r/");
+
+      const timeout = setTimeout(() => finish(null), 25000);
+
+      const listener = (
+        tid: number,
+        changeInfo: { status?: string; url?: string },
+      ) => {
+        if (tid !== tabId) return;
+
+        // 优先用 URL 变化事件判断（跳转发生时 url 会变）
+        if (changeInfo.url) {
+          if (isResolved(changeInfo.url)) finish(changeInfo.url);
+          return;
+        }
+
+        // 否则在 complete 时读取当前真实地址再判断
+        if (changeInfo.status === "complete") {
+          browser.tabs
+            .get(tabId)
+            .then((t) => t?.url)
+            .catch(() => undefined)
+            .then((u) => {
+              if (isResolved(u)) finish(u ?? null);
+            });
+        }
+      };
+
+      browser.tabs.onUpdated.addListener(listener);
+    });
+
+    return finalUrl;
+  } catch (error) {
+    console.error("Error resolving redirect:", error);
+    return null;
+  }
+});
+
 onMessage(Message.SCRAPE_EMAILS, async (message) => {
   try {
     const emails = await scrapeEmails(message.data);

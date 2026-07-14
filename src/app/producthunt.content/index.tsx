@@ -4,6 +4,95 @@ import "~/assets/styles/globals.css";
 import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
+const PH_API = "https://api.producthunt.com/v2/api/graphql";
+const PH_TOKEN = "aqMQYJJIxIfqFMJ2zloSnVy6j0j0ENymNK6o5PwTkvI";
+
+interface PostsResponse {
+  errors?: Array<{ message: string }>;
+  data?: {
+    posts?: {
+      edges: Array<{ node: { website: string } }>;
+      pageInfo: {
+        hasNextPage: boolean;
+        endCursor: string | null;
+      };
+    };
+  };
+}
+
+/**
+ * 通过 Product Hunt GraphQL API 获取指定日期的所有产品 r/{id} 链接
+ */
+async function fetchProductUrls(
+  year: number,
+  month: number,
+  day: number,
+): Promise<string[]> {
+  const postedAfter = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00Z`;
+  const postedBefore = `${year}-${String(month).padStart(2, "0")}-${String(day + 1).padStart(2, "0")}T00:00:00Z`;
+
+  const allUrls: string[] = [];
+  let cursor: string | null = null;
+  const pageSize = 50;
+
+  for (let page = 0; page < 100; page++) {
+    const afterArg = cursor ? `, after: "${cursor}"` : "";
+    const query = `
+      query GetDailyPosts {
+        posts(first: ${pageSize}, postedAfter: "${postedAfter}", postedBefore: "${postedBefore}", order: RANKING${afterArg}) {
+          edges {
+            node {
+              ... on Post {
+                website
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(PH_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${PH_TOKEN}`,
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`GraphQL API responded with ${response.status}`);
+    }
+
+    const json: PostsResponse = (await response.json()) as PostsResponse;
+    if (json.errors) {
+      throw new Error(
+        `GraphQL errors: ${json.errors.map((e) => e.message).join(", ")}`,
+      );
+    }
+
+    const data = json.data?.posts;
+    if (!data) break;
+
+    for (const edge of data.edges) {
+      // `website` 已经是 Product Hunt 的 /r/{token} 跳转链接（token 为字母数字，
+      // 例如 r/U23MKZQPSZUKGY），不能用数字型的 node.id 拼接，否则跳转会失败。
+      // 去掉 utm_* 跟踪参数，保留 path 中的 token 即可。
+      const redirectUrl = edge.node.website?.split("?")[0];
+      if (redirectUrl) allUrls.push(redirectUrl);
+    }
+
+    if (!data.pageInfo.hasNextPage) break;
+    cursor = data.pageInfo.endCursor;
+  }
+
+  return allUrls;
+}
+
 export default defineContentScript({
   matches: ["https://www.producthunt.com/leaderboard/daily/*/*/*/*"],
   cssInjectionMode: "ui",
@@ -11,30 +100,24 @@ export default defineContentScript({
 
   async main(ctx) {
     console.log("Content script is running on producthunt.");
-    if (!(await scraperEnabled())) {
-      return;
-    }
-    if (!(await isPurchasedOrTrial())) {
-      return;
-    }
+    if (!(await scraperEnabled())) return;
+    if (!(await isPurchasedOrTrial())) return;
 
-    const urls = [];
-    let pageCount = 0;
-    let previousHeight = 0;
-    let currentHeight = document.body.scrollHeight;
-    let noChangeCount = 0;
-    const maxNoChangeCount = 5;
-    const maxScrollAttempts = 500;
+    const urls: string[] = [];
+    // 保存 scrapeAllProducts 中经 301 解析出的真实官网地址，供“重新打开”使用
+    const resolvedUrls: string[] = [];
 
-    // 记录已经看到的产品数量
-    let previousProductCount = 0;
+    // 从 URL 中提取年月日: /leaderboard/daily/2026/7/14/all
+    const pathParts = location.pathname.split("/");
+    const year = Number(pathParts[3]);
+    const month = Number(pathParts[4]);
+    const day = Number(pathParts[5]);
 
     // 创建持续显示的状态面板
-    let statusPanel = null;
+    let statusPanel: HTMLDivElement | null = null;
     const statusPanelId = "producthunt-status-panel-" + Date.now();
 
     const createStatusPanel = () => {
-      // 检查是否已存在且在 DOM 中
       if (
         statusPanel &&
         statusPanel.parentNode &&
@@ -43,7 +126,6 @@ export default defineContentScript({
         return statusPanel;
       }
 
-      // 移除可能存在的旧面板
       const existingPanel = document.getElementById(statusPanelId);
       if (existingPanel) {
         existingPanel.remove();
@@ -51,7 +133,7 @@ export default defineContentScript({
 
       const panel = document.createElement("div");
       statusPanel = panel;
-      panel.id = statusPanelId; // 设置唯一 ID
+      panel.id = statusPanelId;
       panel.style.cssText = `
         position: fixed !important;
         top: 20px !important;
@@ -71,7 +153,6 @@ export default defineContentScript({
         user-select: none !important;
       `;
 
-      // 强制添加到 document.body
       const addToBody = () => {
         if (document.body) {
           document.body.appendChild(panel);
@@ -80,11 +161,10 @@ export default defineContentScript({
             statusPanelId,
           );
 
-          // 添加一个 MutationObserver 来监控面板是否被意外移除
           const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
+            for (const mutation of mutations) {
               if (mutation.type === "childList") {
-                mutation.removedNodes.forEach((removedNode) => {
+                for (const removedNode of mutation.removedNodes) {
                   if (removedNode === panel) {
                     console.log("Panel was removed, re-adding...");
                     setTimeout(() => {
@@ -93,14 +173,13 @@ export default defineContentScript({
                       }
                     }, 100);
                   }
-                });
+                }
               }
-            });
+            }
           });
 
           observer.observe(document.body, { childList: true, subtree: true });
         } else {
-          // 如果 body 还没准备好，等待一下再试
           setTimeout(addToBody, 100);
         }
       };
@@ -109,11 +188,14 @@ export default defineContentScript({
       return panel;
     };
 
-    const updateStatus = (status, itemCount, scrollProgress, extra = "") => {
-      // 总是重新创建面板以确保显示
+    const updateStatus = (
+      status: string,
+      itemCount: number,
+      progress: string,
+      extra = "",
+    ) => {
       const panel = createStatusPanel();
 
-      // 再次确认面板在 DOM 中
       setTimeout(() => {
         if (!document.body.contains(panel)) {
           console.log(
@@ -123,14 +205,14 @@ export default defineContentScript({
         }
       }, 50);
 
-      const statusColors = {
+      const statusColors: Record<string, string> = {
         running: "#4CAF50",
         paused: "#ff6b6b",
         completed: "#2196F3",
         error: "#f44336",
       };
 
-      const statusIcons = {
+      const statusIcons: Record<string, string> = {
         running: "🔄",
         paused: "⏸️",
         completed: "✅",
@@ -144,14 +226,13 @@ export default defineContentScript({
 
       const statusLabel =
         status === "running"
-          ? "Scrolling"
+          ? "Fetching"
           : status === "paused"
             ? "Paused"
             : status === "completed"
               ? "Completed"
               : "Error";
 
-      // completed 状态下显示 "Reopen All products" 按钮
       const reopenButton =
         status === "completed"
           ? `<button id="reopen-all-products-btn" style="margin-top: 12px; width: 100%; padding: 8px 12px; background: #2196F3; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; pointer-events: auto !important;">Reopen All products</button>`
@@ -166,7 +247,7 @@ export default defineContentScript({
         </div>
         <div style="font-size: 13px; color: #ccc; line-height: 1.6;">
           <div>📦 Collected: <strong style="color: white; font-size: 15px;">${itemCount}</strong> products</div>
-          <div>📊 Progress: <strong style="color: white;">${scrollProgress}</strong></div>
+          <div>📊 Progress: <strong style="color: white;">${progress}</strong></div>
           ${
             extra
               ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444;">${extra}</div>`
@@ -176,9 +257,10 @@ export default defineContentScript({
         ${reopenButton}
       `;
 
-      // 绑定重新打开按钮的点击事件
       if (status === "completed") {
-        const reopenBtn = panel.querySelector("#reopen-all-products-btn");
+        const reopenBtn = panel.querySelector(
+          "#reopen-all-products-btn",
+        ) as HTMLButtonElement | null;
         if (reopenBtn) {
           reopenBtn.onclick = () => {
             reopenAllProducts();
@@ -187,38 +269,7 @@ export default defineContentScript({
       }
 
       console.log(
-        `Status updated: ${status}, items: ${itemCount}, progress: ${scrollProgress}`,
-      );
-    };
-
-    // 重新打开所有产品页面（不再重新抓取，直接复用已收集的 urls）
-    const reopenAllProducts = async () => {
-      // 重置状态
-      updateStatus("running", urls.length, "100%", "🔄 Reopening product pages...");
-
-      let reopenedCount = 0;
-      for (const url of urls) {
-        await sendMessage(Message.OPEN_TAB, url);
-        reopenedCount++;
-
-        // 实时显示已打开的网页数
-        updateStatus(
-          "running",
-          urls.length,
-          "100%",
-          `🔄 Reopening pages...<br>📂 Opened: ${reopenedCount}/${urls.length}`,
-        );
-
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
-
-      console.log(`All ${urls.length} tabs have been re-opened.`);
-
-      updateStatus(
-        "completed",
-        urls.length,
-        "100%",
-        `✅ Completed!<br>📂 Opened: ${reopenedCount}/${urls.length} pages`,
+        `Status updated: ${status}, items: ${itemCount}, progress: ${progress}`,
       );
     };
 
@@ -230,159 +281,116 @@ export default defineContentScript({
       }
     };
 
-    // 初始化状态面板
-    updateStatus("running", 0, "0%", "Starting scroll task...");
+    const openAllProductTabs = async (
+      label: string,
+      targetUrls: string[] = urls,
+    ) => {
+      updateStatus("running", targetUrls.length, "100%", `🔄 ${label}...`);
 
-    // 检查页面可见性并提醒
-    const checkVisibility = () => {
-      if (document.hidden) {
+      let openedCount = 0;
+      for (const url of targetUrls) {
+        await sendMessage(Message.SCRAPE_EMAILS, url);
+        openedCount++;
+
         updateStatus(
-          "paused",
-          urls.length,
-          `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "⚠️ Keep this tab in foreground<br>Will resume automatically when you return",
+          "running",
+          targetUrls.length,
+          "100%",
+          `🔄 ${label}...<br>📂 Opened: ${openedCount}/${targetUrls.length}`,
         );
-        return false;
+
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-      return true;
+
+      console.log(`All ${targetUrls.length} tabs have been opened.`);
+
+      updateStatus(
+        "completed",
+        targetUrls.length,
+        "100%",
+        `✅ Completed!<br>📂 Opened: ${openedCount}/${targetUrls.length} pages`,
+      );
     };
 
-    while (pageCount < maxScrollAttempts && noChangeCount < maxNoChangeCount) {
-      // 检查页面是否在前台
-      if (!checkVisibility()) {
-        console.log("Page is in background, pausing scrolling");
-        // 等待页面重新可见，但不增加 pageCount
-        while (document.hidden) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+    // 抓取所有产品的邮件：先打开 website 跟随 301 拿到真实官网地址，
+    // 再把它交给 SCRAPE_EMAILS（不动 email-scraper 的既有逻辑）。
+    // 串行处理，每次 RESOLVE_REDIRECT 调用前间隔 2s，避免频繁打 Product Hunt
+    // 触发 Cloudflare 拦截。
+    const scrapeAllProducts = async () => {
+      updateStatus("running", urls.length, "0%", "Scraping emails...");
+
+      const RESOLVE_INTERVAL_MS = 2000;
+      let processed = 0;
+
+      for (const url of urls) {
+        try {
+          // 调用前等待间隔，避免频繁触发 Cloudflare 拦截
+          await new Promise((r) => setTimeout(r, RESOLVE_INTERVAL_MS));
+          // 打开 website 标签页，等待 301 落地，取最终真实 URL
+          const finalUrl = await sendMessage(Message.RESOLVE_REDIRECT, url);
+          if (finalUrl) {
+            // 解析成功：保存真实官网地址并抓取邮件
+            resolvedUrls.push(finalUrl);
+            await sendMessage(Message.SCRAPE_EMAILS, finalUrl);
+          } else {
+            // 解析失败：兜底只打开标签页，不抓取、也不记入 resolvedUrls
+            await sendMessage(Message.OPEN_TAB, url);
+          }
+        } catch (error) {
+          console.error(`Error scraping ${url}:`, error);
         }
-        console.log("Page is now visible, resuming scrolling");
+        processed++;
+
         updateStatus(
           "running",
           urls.length,
-          `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "✨ Resuming scroll...",
+          "100%",
+          `🔄 Scraping emails...<br>📧 Processed: ${processed}/${urls.length}`,
         );
       }
 
-      pageCount++;
+      console.log(`Scraped emails for ${urls.length} products.`);
+    };
 
-      previousHeight = currentHeight;
+    // 重新打开所有产品页面：优先打开 301 解析出的真实官网地址，
+    // 若尚未抓取（resolvedUrls 为空）则退回原始 website 链接，不重新抓取。
+    const reopenAllProducts = async () => {
+      const urlsToReopen = resolvedUrls.length > 0 ? resolvedUrls : urls;
+      await openAllProductTabs("Reopening product pages", urlsToReopen);
+    };
 
-      const viewportHeight = window.innerHeight;
-      const scrollPosition = window.scrollY;
-      const randomFactor = 0.5 + Math.random() * 0.5;
-      const scrollStep = viewportHeight * randomFactor;
+    // ====== 主流程：通过 API 获取产品 URL ======
+    updateStatus("running", 0, "0%", "Fetching product list via API...");
 
-      const scrollTarget = Math.min(
-        scrollPosition + scrollStep,
-        document.body.scrollHeight - viewportHeight * 0.2,
-      );
-
-      console.log(`Scrolling to ${scrollTarget}`);
-
-      // 执行滚动
-      window.scrollTo({
-        top: scrollTarget,
-        behavior: "smooth",
-      });
-
-      // 等待页面响应和加载
-      const waitTime = 5000 + Math.random() * 2000;
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-
-      currentHeight = document.body.scrollHeight;
-
-      // 检查页面内容是否有变化并收集URL
-      const html = document.documentElement.innerHTML;
-      // 匹配两种格式: post-item-数字ID 或 /products/字符串slug
-      const regex = /(?:post-item-(\d+)|\/products\/([a-zA-Z0-9-]+))/g;
-      const currentProducts: string[] = [];
-
-      let match: RegExpExecArray | null;
-      match = regex.exec(html);
-      while (match !== null) {
-        const numericId = match[1];
-        const slugId = match[2];
-        const productId = (numericId ?? slugId) as string;
-
-        if (productId && !currentProducts.includes(productId)) {
-          currentProducts.push(productId);
-        }
-
-        const url = numericId
-          ? `https://www.producthunt.com/r/p/${productId}`
-          : `https://www.producthunt.com/products/${productId}`;
-        if (url && !urls.includes(url)) {
-          urls.push(url);
-        }
-
-        match = regex.exec(html);
-      }
-
-      // 检查高度和产品数量是否变化
-      if (
-        previousHeight === currentHeight &&
-        previousProductCount === currentProducts.length
-      ) {
-        noChangeCount++;
-        console.log(
-          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, products: ${currentProducts.length})`,
-        );
-      } else {
-        noChangeCount = 0;
-        previousProductCount = currentProducts.length;
-      }
-
-      console.log(
-        `Scrolling attempt ${pageCount}/${maxScrollAttempts}, position: ${Math.round(
-          window.scrollY,
-        )}/${document.body.scrollHeight}, URLs: ${urls.length}`,
-      );
-
-      // 更新状态面板
+    let fetchedUrls: string[];
+    try {
+      fetchedUrls = await fetchProductUrls(year, month, day);
+    } catch (error) {
+      console.error("Failed to fetch products from API:", error);
       updateStatus(
-        "running",
-        urls.length,
-        `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-        `📍 Position: ${Math.round(window.scrollY)}/${
-          document.body.scrollHeight
-        }px`,
+        "error",
+        0,
+        "0%",
+        `❌ API error: ${error instanceof Error ? error.message : String(error)}`,
       );
+      return;
     }
 
-    console.log(`Scrolling completed. Total URLs collected: ${urls.length}`);
-
-    // 开始打开标签页
-    updateStatus("running", urls.length, "100%", "🔄 Opening product pages...");
-
-    let openedTabsCount = 0;
-    for (const url of urls) {
-      await sendMessage(Message.OPEN_TAB, url);
-      openedTabsCount++;
-
-      // 实时显示已打开的网页数
-      updateStatus(
-        "running",
-        urls.length,
-        "100%",
-        `🔄 Opening pages...<br>📂 Opened: ${openedTabsCount}/${urls.length}`,
-      );
-
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+    // 直接使用 API 返回的 URL
+    for (const url of fetchedUrls) {
+      urls.push(url);
     }
 
-    console.log(`All ${urls.length} tabs have been opened.`);
-
-    updateStatus(
-      "completed",
-      urls.length,
-      "100%",
-      `✅ Completed!<br>📂 Opened: ${openedTabsCount}/${urls.length} pages`,
+    console.log(
+      `API returned ${urls.length} products for ${year}/${month}/${day}`,
     );
 
-    // 5秒后移除状态面板
-    /*     setTimeout(() => {
-      removeStatusPanel();
-    }, 5000); */
+    if (urls.length === 0) {
+      updateStatus("error", 0, "0%", "No products found for this date");
+      return;
+    }
+
+    // 先抓取邮件（r/{id} 会自动 301 跳转到产品官网）
+    await scrapeAllProducts();
   },
 });

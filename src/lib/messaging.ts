@@ -7,6 +7,7 @@ export const Message = {
   AUTH_SUCCESS: "auth-success",
   OPEN_TAB: "open-tab",
   OPEN_TAB_AND_RETURN: "open-tab-and-return",
+  RESOLVE_REDIRECT: "resolve-redirect",
   SCRAPE_EMAILS: "scrape-emails",
   EMAILS_COLLECTED: "emails-collected",
   FETCH_EMAILS_FROM_URLS: "fetch-emails-from-urls",
@@ -20,6 +21,7 @@ interface Messages {
   [Message.AUTH_SUCCESS]: (tabId: number) => null;
   [Message.OPEN_TAB]: (url: string) => null;
   [Message.OPEN_TAB_AND_RETURN]: () => null;
+  [Message.RESOLVE_REDIRECT]: (url: string) => string | null;
   [Message.SCRAPE_EMAILS]: (url: string) => ScrapedEmail[];
   [Message.EMAILS_COLLECTED]: (emails: ScrapedEmail[]) => null;
   [Message.FETCH_EMAILS_FROM_URLS]: (urls: string[]) => {
