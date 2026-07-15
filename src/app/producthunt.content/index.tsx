@@ -64,6 +64,17 @@ async function fetchProductUrls(
       body: JSON.stringify({ query }),
     });
 
+    // 429 Too Many Requests：等待 5s 重试，最多 3 次
+    if (response.status === 429) {
+      console.warn(
+        `GraphQL API rate limited (429) on page ${page + 1}, retrying in 5s...`,
+      );
+      await new Promise((r) => setTimeout(r, 5000));
+      // 回退循环变量，重新请求当前页
+      page--;
+      continue;
+    }
+
     if (!response.ok) {
       throw new Error(`GraphQL API responded with ${response.status}`);
     }
@@ -88,6 +99,8 @@ async function fetchProductUrls(
 
     if (!data.pageInfo.hasNextPage) break;
     cursor = data.pageInfo.endCursor;
+    // 每次翻页请求后等待 1s，避免频繁调用 API
+    await new Promise((r) => setTimeout(r, 1000));
   }
 
   return allUrls;
