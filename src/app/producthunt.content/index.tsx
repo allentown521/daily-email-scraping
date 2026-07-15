@@ -396,6 +396,13 @@ export default defineContentScript({
       await Promise.all(workers);
 
       console.log(`Scraped emails for ${urls.length} products.`);
+
+      updateStatus(
+        "completed",
+        urls.length,
+        "100%",
+        `✅ Completed!<br>📂 Opened: ${resolved}/${urls.length} pages`,
+      );
     };
 
     // 重新打开所有产品页面：优先打开 301 解析出的真实官网地址，
