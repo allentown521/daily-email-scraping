@@ -312,42 +312,75 @@ export default defineContentScript({
       );
     };
 
-    // 抓取所有产品的邮件：先打开 website 跟随 301 拿到真实官网地址，
-    // 再把它交给 SCRAPE_EMAILS（不动 email-scraper 的既有逻辑）。
-    // 串行处理，每次 RESOLVE_REDIRECT 调用前间隔 2s，避免频繁打 Product Hunt
-    // 触发 Cloudflare 拦截。
+    // 抓取所有产品的邮件：
+    // - RESOLVE_REDIRECT 串行（每 2s 一个），避免频繁打 Product Hunt 触发 Cloudflare 拦截
+    // - SCRAPE_EMAILS 最多 5 个并行抓取，不阻塞解析流程
     const scrapeAllProducts = async () => {
       updateStatus("running", urls.length, "0%", "Scraping emails...");
 
       const RESOLVE_INTERVAL_MS = 2000;
-      let processed = 0;
+      const SCRAPE_CONCURRENCY = 5;
+      let resolved = 0;
+      let scraped = 0;
 
+      // 解析成功后的真实网址队列，由 worker 消费
+      const scrapeQueue: string[] = [];
+      let queueDone = false;
+
+      // 启动抓取 worker 池
+      const scrapeWorker = async () => {
+        while (true) {
+          const targetUrl = scrapeQueue.shift();
+          if (!targetUrl) {
+            if (queueDone) break;
+            await new Promise((r) => setTimeout(r, 100));
+            continue;
+          }
+          try {
+            await sendMessage(Message.SCRAPE_EMAILS, targetUrl);
+          } catch (error) {
+            console.error(`Error scraping ${targetUrl}:`, error);
+          }
+          scraped++;
+          updateStatus(
+            "running",
+            urls.length,
+            "100%",
+            `🔄 Scraping emails...<br>📧 Resolved: ${resolved}/${urls.length}<br>📨 Scraped: ${scraped}/${urls.length}`,
+          );
+        }
+      };
+      const workers = Array.from({ length: SCRAPE_CONCURRENCY }, () =>
+        scrapeWorker(),
+      );
+
+      // 串行解析，每 2s 一个
       for (const url of urls) {
         try {
-          // 调用前等待间隔，避免频繁触发 Cloudflare 拦截
           await new Promise((r) => setTimeout(r, RESOLVE_INTERVAL_MS));
-          // 打开 website 标签页，等待 301 落地，取最终真实 URL
           const finalUrl = await sendMessage(Message.RESOLVE_REDIRECT, url);
           if (finalUrl) {
-            // 解析成功：保存真实官网地址并抓取邮件
             resolvedUrls.push(finalUrl);
-            await sendMessage(Message.SCRAPE_EMAILS, finalUrl);
+            scrapeQueue.push(finalUrl);
           } else {
             // 解析失败：兜底只打开标签页，不抓取、也不记入 resolvedUrls
             await sendMessage(Message.OPEN_TAB, url);
           }
         } catch (error) {
-          console.error(`Error scraping ${url}:`, error);
+          console.error(`Error resolving ${url}:`, error);
         }
-        processed++;
-
+        resolved++;
         updateStatus(
           "running",
           urls.length,
           "100%",
-          `🔄 Scraping emails...<br>📧 Processed: ${processed}/${urls.length}`,
+          `🔄 Resolving URLs...<br>📧 Resolved: ${resolved}/${urls.length}`,
         );
       }
+
+      // 解析全部完成，通知 worker 结束
+      queueDone = true;
+      await Promise.all(workers);
 
       console.log(`Scraped emails for ${urls.length} products.`);
     };
