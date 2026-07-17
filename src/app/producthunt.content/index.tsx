@@ -312,7 +312,7 @@ export default defineContentScript({
           `🔄 ${label}...<br>📂 Opened: ${openedCount}/${targetUrls.length}`,
         );
 
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       console.log(`All ${targetUrls.length} tabs have been opened.`);
