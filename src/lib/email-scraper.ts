@@ -52,9 +52,20 @@ const TEST_DOMAINS = new Set([
   "domain.com",
   "zohomarketplace.com",
   "frogybit.io",
+  "fiverr.com",
+  "cloudflare.com",
+  "microsoft.com",
+  "github.com",
+  "slack.com",
+  "lovable.dev",
+  "setapp.com",
 ]);
 
-const INCLUDE_TEST_DOMAINS = new Set(["sentry.wixpress.com", "sentry.io"]);
+const INCLUDE_TEST_DOMAINS = new Set([
+  "sentry.wixpress.com",
+  "sentry.io",
+  "atlassian.net",
+]);
 
 const FILE_EXTENSIONS = new Set([
   "png",
@@ -226,13 +237,14 @@ async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
       return await attemptFetch(url, timeout);
     } catch (error) {
       if (i === maxRetries) {
-        const errorMsg =
-          error instanceof Error ? error.message : String(error);
-        console.error(`Failed to fetch ${url} after ${maxRetries} retries:`, errorMsg);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(
+          `Failed to fetch ${url} after ${maxRetries} retries:`,
+          errorMsg,
+        );
         return "";
       }
-      const errorMsg =
-        error instanceof Error ? error.message : String(error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
       console.warn(
         `Failed to fetch ${url} (attempt ${i + 1}/${maxRetries + 1}): ${errorMsg}, retrying in ${retryDelay}ms...`,
       );
