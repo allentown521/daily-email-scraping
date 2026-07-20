@@ -59,6 +59,7 @@ const TEST_DOMAINS = new Set([
   "slack.com",
   "lovable.dev",
   "setapp.com",
+  "creem.io",
 ]);
 
 const INCLUDE_TEST_DOMAINS = new Set([
