@@ -458,5 +458,8 @@ export default defineContentScript({
 
     // 先抓取邮件（r/{id} 会自动 301 跳转到产品官网）
     await scrapeAllProducts();
+
+    // 再重新打开所有产品页面抓取一次
+    await reopenAllProducts();
   },
 });
