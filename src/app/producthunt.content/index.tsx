@@ -300,20 +300,33 @@ export default defineContentScript({
     ) => {
       updateStatus("running", targetUrls.length, "100%", `🔄 ${label}...`);
 
+      const CONCURRENCY = 3;
+      let cursor = 0;
       let openedCount = 0;
-      for (const url of targetUrls) {
-        await sendMessage(Message.SCRAPE_EMAILS, url);
-        openedCount++;
 
-        updateStatus(
-          "running",
-          targetUrls.length,
-          "100%",
-          `🔄 ${label}...<br>📂 Opened: ${openedCount}/${targetUrls.length}`,
-        );
+      const worker = async () => {
+        while (true) {
+          const i = cursor++;
+          if (i >= targetUrls.length) break;
+          const url = targetUrls[i];
+          if (!url) continue;
+          try {
+            await sendMessage(Message.SCRAPE_EMAILS, url);
+          } catch (error) {
+            console.error(`Error opening ${url}:`, error);
+          }
+          openedCount++;
+          updateStatus(
+            "running",
+            targetUrls.length,
+            "100%",
+            `🔄 ${label}...<br>📂 Opened: ${openedCount}/${targetUrls.length}`,
+          );
+        }
+      };
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+      const workerCount = Math.min(CONCURRENCY, targetUrls.length);
+      await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
       console.log(`All ${targetUrls.length} tabs have been opened.`);
 
@@ -332,7 +345,7 @@ export default defineContentScript({
       updateStatus("running", urls.length, "0%", "Scraping emails...");
 
       const RESOLVE_INTERVAL_MS = 2000;
-      const SCRAPE_CONCURRENCY = 5;
+      const SCRAPE_CONCURRENCY = 10;
       let resolved = 0;
       let scraped = 0;
 
