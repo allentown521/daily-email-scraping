@@ -99,8 +99,8 @@ async function fetchProductUrls(
 
     if (!data.pageInfo.hasNextPage) break;
     cursor = data.pageInfo.endCursor;
-    // 每次翻页请求后等待 1s，避免频繁调用 API
-    await new Promise((r) => setTimeout(r, 1000));
+    // 每次翻页请求后等待 5s，避免频繁调用 API
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   return allUrls;
