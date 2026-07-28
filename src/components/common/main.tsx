@@ -54,6 +54,7 @@ export const Main = ({ className, filename }: MainProps) => {
     ideakiln: false,
     trylaunch: false,
     startupbase: false,
+    hunt0: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -133,6 +134,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.ideakiln = true;
         newSelection.trylaunch = true;
         newSelection.startupbase = true;
+        newSelection.hunt0 = true;
         //newSelection.peerpush = true;
       }
 
@@ -299,6 +301,17 @@ export const Main = ({ className, filename }: MainProps) => {
         const day = date.getDate();
 
         return `https://startupbase.io/launches/daily/${year}/${month}/${day}`;
+      },
+    },
+    {
+      id: "hunt0",
+      name: "hunt0",
+      url: (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        return `https://hunt0.com/explore?range=day&reference=${year}-${month}-${day}`;
       },
     },
     /*     {
@@ -637,6 +650,7 @@ export const Main = ({ className, filename }: MainProps) => {
                 "ideakiln",
                 "trylaunch",
                 "startupbase",
+                "hunt0",
               ].map((siteId) => {
                 const site = siteOptions.find((s) => s.id === siteId);
                 return site ? (
