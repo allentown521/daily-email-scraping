@@ -62,6 +62,23 @@ const TEST_DOMAINS = new Set([
   "creem.io",
 ]);
 
+const EMAIL_PREFIX_BLOCKLIST = new Set([
+  "suffix",
+  "private",
+  "privacy",
+  "example",
+  "legal",
+  "security",
+  "refund",
+  "noreply",
+  "no-reply",
+  "donotreply",
+  "do-not-reply",
+  "postmaster",
+  "abuse",
+  "webmaster",
+]);
+
 const INCLUDE_TEST_DOMAINS = new Set([
   "sentry.wixpress.com",
   "sentry.io",
@@ -284,6 +301,12 @@ function validateEmail(email: string): boolean {
 
   const domain = normalized.split("@")[1]?.toLowerCase();
   if (!domain) return false;
+
+  // Filter out blocked email prefixes (local part before @)
+  const localPart = normalized.split("@")[0]?.toLowerCase();
+  if (localPart && EMAIL_PREFIX_BLOCKLIST.has(localPart)) {
+    return false;
+  }
 
   // Filter out test domains
   if (
