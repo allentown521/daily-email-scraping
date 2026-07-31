@@ -28,8 +28,13 @@ async function fetchProductUrls(
   month: number,
   day: number,
 ): Promise<string[]> {
-  const postedAfter = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00Z`;
-  const postedBefore = `${year}-${String(month).padStart(2, "0")}-${String(day + 1).padStart(2, "0")}T00:00:00Z`;
+  // 用 Date 对象计算日期区间，让 JS 自动处理跨月/跨年进位，
+  // 避免 day+1 直接拼接导致非法日期（如 7月31日 + 1 = 7月32日）
+  const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const postedAfter = `${startDate.getUTCFullYear()}-${pad(startDate.getUTCMonth() + 1)}-${pad(startDate.getUTCDate())}T00:00:00Z`;
+  const postedBefore = `${endDate.getUTCFullYear()}-${pad(endDate.getUTCMonth() + 1)}-${pad(endDate.getUTCDate())}T00:00:00Z`;
 
   const allUrls: string[] = [];
   let cursor: string | null = null;
