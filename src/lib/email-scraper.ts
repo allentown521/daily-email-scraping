@@ -60,6 +60,7 @@ const TEST_DOMAINS = new Set([
   "lovable.dev",
   "setapp.com",
   "creem.io",
+  "cloudflare.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
