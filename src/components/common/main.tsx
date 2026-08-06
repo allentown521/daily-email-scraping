@@ -55,6 +55,7 @@ export const Main = ({ className, filename }: MainProps) => {
     trylaunch: false,
     startupbase: false,
     hunt0: false,
+    nicklaunches: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -118,6 +119,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.nxgntools = true;
         newSelection.openhunts = true;
         newSelection.foundrlist = true;
+        newSelection.nicklaunches = true;
       } else if (group === "lastWeek" && newGroupSelection.lastWeek) {
         newSelection.tinylaunch = true;
       } else if (group === "daily" && newGroupSelection.daily) {
@@ -312,6 +314,29 @@ export const Main = ({ className, filename }: MainProps) => {
         const day = String(date.getDate()).padStart(2, "0");
 
         return `https://hunt0.com/explore?range=day&reference=${year}-${month}-${day}`;
+      },
+    },
+    {
+      id: "nicklaunches",
+      name: "nicklaunches",
+      url: (date: Date) => {
+        // Calculate which week of the year it is using ISO 8601 standard
+        const getISOWeek = (d: Date): number => {
+          const target = new Date(d.valueOf());
+          const dayNr = (d.getDay() + 6) % 7; // Make Monday = 0, Sunday = 6
+          target.setDate(target.getDate() - dayNr + 3);
+          const firstThursday = target.valueOf();
+          target.setMonth(0, 1);
+          if (target.getDay() !== 4) {
+            target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+          }
+          return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000); // 604800000 = 7 * 24 * 3600 * 1000
+        };
+
+        const year = date.getFullYear();
+        const week = getISOWeek(date);
+
+        return `https://nicklaunches.com/week/${year}/${week}/`;
       },
     },
     /*     {
@@ -694,7 +719,13 @@ export const Main = ({ className, filename }: MainProps) => {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {["peerlist", "nxgntools", "openhunts", "foundrlist"].map(
+              {[
+                "peerlist",
+                "nxgntools",
+                "openhunts",
+                "foundrlist",
+                "nicklaunches",
+              ].map(
                 (siteId) => {
                   const site = siteOptions.find((s) => s.id === siteId);
                   return site ? (
