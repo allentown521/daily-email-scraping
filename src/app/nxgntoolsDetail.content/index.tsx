@@ -18,7 +18,7 @@ export default defineContentScript({
     const visitSiteUrls = [];
 
     for (const a of document.querySelectorAll("a")) {
-      if (a.innerText.trim() === "Visit Website") {
+      if (a.innerText.toLowerCase().trim().includes("visit")) {
         const href = a.getAttribute("href");
         if (href) {
           visitSiteUrls.push(href);
