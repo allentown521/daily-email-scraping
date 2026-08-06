@@ -17,7 +17,7 @@ export default defineContentScript({
     if (!(await isPurchasedOrTrial())) {
       return;
     }
-    const urls = [];
+    const urlsSet = new Set<string>();
 
     // 创建持续显示的状态面板
     let statusPanel = null;
@@ -168,11 +168,12 @@ export default defineContentScript({
 
     document.querySelectorAll("a").forEach((a) => {
       const href = a.getAttribute("href");
-      if (href && href.startsWith("https://nicklaunches.com/products")) {
-        urls.push(href);
+      if (href && href.startsWith("/products/")) {
+        urlsSet.add(`https://nicklaunches.com${href}`);
       }
     });
 
+    const urls = [...urlsSet];
     console.log(`Total URLs collected: ${urls.length}`);
 
     // 更新为打开中状态
