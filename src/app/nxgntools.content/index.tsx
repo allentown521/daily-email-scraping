@@ -166,15 +166,12 @@ export default defineContentScript({
     // 初始化状态面板
     updateStatus("running", 0, "Starting to collect links...");
 
-    const toolsElement = document.getElementById("tools");
-    if (toolsElement) {
-      toolsElement.querySelectorAll("a").forEach((a) => {
-        const href = a.getAttribute("href");
-        if (href && href.startsWith("/tools")) {
-          urls.push(`https://www.nxgntools.com${href}`);
-        }
-      });
-    }
+    document.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href");
+      if (href && href.startsWith("/tools")) {
+        urls.push(`https://www.nxgntools.com${href}`);
+      }
+    });
 
     console.log(`Total URLs collected: ${urls.length}`);
 
