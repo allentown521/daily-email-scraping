@@ -165,6 +165,21 @@ export default defineContentScript({
     updateStatus("running", 0, "Waiting for page to load...");
 
     setTimeout(async () => {
+      updateStatus("running", 0, "Expanding products list...");
+
+      // 点击包含 "Show all products" 文本的按钮，展开全部产品后再收集
+      const showAllButton = Array.from(
+        document.querySelectorAll("button"),
+      ).find((btn) => btn.textContent?.includes("Show all products"));
+      if (showAllButton) {
+        console.log("Found 'Show all products' button, clicking...");
+        showAllButton.click();
+        // 等待列表展开加载
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      } else {
+        console.warn("'Show all products' button not found, collecting as-is");
+      }
+
       updateStatus("running", 0, "Starting to collect links...");
 
       const urls = [];
