@@ -53,7 +53,6 @@ const TEST_DOMAINS = new Set([
   "zohomarketplace.com",
   "frogybit.io",
   "fiverr.com",
-  "cloudflare.com",
   "microsoft.com",
   "github.com",
   "slack.com",
