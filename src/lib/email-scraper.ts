@@ -539,7 +539,7 @@ export async function scrapeEmails(url: string): Promise<ScrapedEmail[]> {
         const isReachable = await verifyEmail(email);
         if (isReachable) {
           scrapedEmails.push({
-            email,
+            email: email.toLowerCase(),
             foundOn: url,
             timestamp,
             source: "mailto",
@@ -560,7 +560,7 @@ export async function scrapeEmails(url: string): Promise<ScrapedEmail[]> {
         const isReachable = await verifyEmail(email);
         if (isReachable) {
           scrapedEmails.push({
-            email,
+            email: email.toLowerCase(),
             foundOn: url,
             timestamp,
             source: "contact-page",
