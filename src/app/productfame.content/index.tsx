@@ -5,7 +5,7 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://productfame.com/trending?filter=today"],
+  matches: ["https://productfame.com/trending"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
