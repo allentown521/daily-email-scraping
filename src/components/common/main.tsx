@@ -56,6 +56,7 @@ export const Main = ({ className, filename }: MainProps) => {
     startupbase: false,
     hunt0: false,
     nicklaunches: false,
+    productfame: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -137,6 +138,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.trylaunch = true;
         newSelection.startupbase = true;
         newSelection.hunt0 = true;
+        newSelection.productfame = true;
         //newSelection.peerpush = true;
       }
 
@@ -315,6 +317,11 @@ export const Main = ({ className, filename }: MainProps) => {
 
         return `https://hunt0.com/explore?range=day&reference=${year}-${month}-${day}`;
       },
+    },
+    {
+      id: "productfame",
+      name: "productfame",
+      url: "https://productfame.com/trending",
     },
     {
       id: "nicklaunches",
@@ -676,6 +683,7 @@ export const Main = ({ className, filename }: MainProps) => {
                 "trylaunch",
                 "startupbase",
                 "hunt0",
+                "productfame",
               ].map((siteId) => {
                 const site = siteOptions.find((s) => s.id === siteId);
                 return site ? (
