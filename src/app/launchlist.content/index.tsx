@@ -5,12 +5,12 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://www.tinystartups.com/"],
+  matches: ["https://www.launch-list.org/"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
   async main(ctx) {
-    console.log("Content script is running on tinystartups.");
+    console.log("Content script is running on launch-list.");
     if (!(await scraperEnabled())) {
       return;
     }
@@ -20,7 +20,7 @@ export default defineContentScript({
 
     // 创建持续显示的状态面板
     let statusPanel = null;
-    const statusPanelId = "tinystartups-status-panel-" + Date.now();
+    const statusPanelId = "launch-list-status-panel-" + Date.now();
 
     const createStatusPanel = () => {
       // 检查是否已存在且在 DOM 中
@@ -165,7 +165,7 @@ export default defineContentScript({
     // 初始化状态面板
     updateStatus("running", 0, "Starting to collect links...");
     await new Promise((resolve) => setTimeout(resolve, 5000));
-    const articles = document.querySelectorAll("article");
+    const articles = document.querySelectorAll('div[role="listitem"]');
 
     console.log(`Total URLs collected: ${articles.length}`);
 
@@ -180,10 +180,10 @@ export default defineContentScript({
     let scrapedCount = 0;
     for (const article of articles) {
       if (article) {
-        console.log(`正在点击第 ${scrapedCount + 1} 个 article 中的元素...`);
+        console.log(`正在点击第 ${scrapedCount + 1} 个 listitem 元素...`);
 
-        // 在当前 article 内部查找你想点击的标签，比如 'button' 或 '.click-me'
-        const target = article.querySelector("button");
+        // 在当前 div 内部查找第一个子元素
+        const target = article.firstElementChild as HTMLElement;
         if (target) {
           scrapedCount++;
 
@@ -194,10 +194,7 @@ export default defineContentScript({
           const links = document.querySelectorAll("a");
           for (const link of links) {
             const href = link.getAttribute("href");
-            if (
-              href?.includes("tinystartups") &&
-              link.innerHTML.includes("Visit Website")
-            ) {
+            if (href && link.innerHTML.toLowerCase().includes("visit")) {
               // 更新状态，显示已刮取的邮件数量
               updateStatus(
                 "running",
@@ -213,7 +210,7 @@ export default defineContentScript({
           }
         }
       } else {
-        console.warn(`第 ${scrapedCount + 1} 个 article 中未找到目标元素`);
+        console.warn(`第 ${scrapedCount + 1} 个 listitem 中未找到目标元素`);
       }
     }
 

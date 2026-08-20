@@ -57,6 +57,7 @@ export const Main = ({ className, filename }: MainProps) => {
     hunt0: false,
     nicklaunches: false,
     productfame: false,
+    launchlist: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -121,6 +122,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.openhunts = true;
         newSelection.foundrlist = true;
         newSelection.nicklaunches = true;
+        newSelection.launchlist = true;
       } else if (group === "lastWeek" && newGroupSelection.lastWeek) {
         newSelection.tinylaunch = true;
       } else if (group === "daily" && newGroupSelection.daily) {
@@ -345,6 +347,11 @@ export const Main = ({ className, filename }: MainProps) => {
 
         return `https://nicklaunches.com/week/${year}/${week}/`;
       },
+    },
+    {
+      id: "launchlist",
+      name: "launch-list",
+      url: "https://www.launch-list.org",
     },
     /*     {
       id: "launchigniter",
@@ -733,29 +740,28 @@ export const Main = ({ className, filename }: MainProps) => {
                 "openhunts",
                 "foundrlist",
                 "nicklaunches",
-              ].map(
-                (siteId) => {
-                  const site = siteOptions.find((s) => s.id === siteId);
-                  return site ? (
-                    <div key={site.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={site.id}
-                        checked={selectedSites[site.id]}
-                        onChange={() => handleCheckboxChange(site.id)}
-                        disabled={!isContentScriptEnabled}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                      <label
-                        htmlFor={site.id}
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        {site.name}
-                      </label>
-                    </div>
-                  ) : null;
-                },
-              )}
+                "launchlist",
+              ].map((siteId) => {
+                const site = siteOptions.find((s) => s.id === siteId);
+                return site ? (
+                  <div key={site.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={site.id}
+                      checked={selectedSites[site.id]}
+                      onChange={() => handleCheckboxChange(site.id)}
+                      disabled={!isContentScriptEnabled}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <label
+                      htmlFor={site.id}
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      {site.name}
+                    </label>
+                  </div>
+                ) : null;
+              })}
             </div>
           </div>
 

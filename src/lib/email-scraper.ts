@@ -478,8 +478,8 @@ function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
     }
   }
 
-  // Sort by score descending, return top 5
-  return candidates.sort((a, b) => b.score - a.score).slice(0, 5);
+  // Sort by score descending, return top 20
+  return candidates.sort((a, b) => b.score - a.score).slice(0, 20);
 }
 
 async function scrapeLevel1(
@@ -510,10 +510,11 @@ async function scrapeLevel2and3(
   const allEmails = new Set<string>();
 
   // Fetch top candidates sequentially
-  for (const candidate of candidates.slice(0, 3)) {
+  for (const candidate of candidates) {
     const candidateHtml = await fetchWithTimeout(candidate.url);
     const emails = extractEmailsFromText(candidateHtml);
     for (const email of emails) {
+      console.log(`[Level ${candidate.type}] Found email: ${email}`);
       allEmails.add(email);
     }
 

@@ -199,6 +199,7 @@ onMessage(Message.RESOLVE_REDIRECT, async (message) => {
 
 onMessage(Message.SCRAPE_EMAILS, async (message) => {
   try {
+    console.log("Scraping emails:", message.data);
     const emails = await scrapeEmails(message.data);
 
     // Store emails in local storage with deduplication
