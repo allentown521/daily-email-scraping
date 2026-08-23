@@ -5,7 +5,7 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://www.tinystartups.com/"],
+  matches: ["https://www.tinystartups.com/today"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
@@ -204,9 +204,7 @@ export default defineContentScript({
                 articles.length,
                 `🔄 Scraping...<br>📧 Scraped: <strong style="color: #4CAF50;">${scrapedCount}</strong> / ${articles.length}`,
               );
-              console.log(
-                `正在刮取第 ${scrapedCount} 个网站的邮件... ${href}`,
-              );
+              console.log(`正在刮取第 ${scrapedCount} 个网站的邮件... ${href}`);
               await sendMessage(Message.SCRAPE_EMAILS, href);
               break;
             }
