@@ -58,6 +58,7 @@ export const Main = ({ className, filename }: MainProps) => {
     nicklaunches: false,
     productfame: false,
     launchlist: false,
+    launchigniter: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -123,6 +124,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.foundrlist = true;
         newSelection.nicklaunches = true;
         newSelection.launchlist = true;
+        newSelection.launchigniter = true;
       } else if (group === "lastWeek" && newGroupSelection.lastWeek) {
         newSelection.tinylaunch = true;
       } else if (group === "daily" && newGroupSelection.daily) {
@@ -353,12 +355,12 @@ export const Main = ({ className, filename }: MainProps) => {
       name: "launch-list",
       url: "https://www.launch-list.org",
     },
-    /*     {
+    {
       id: "launchigniter",
       openInSingleBrowser: true,
       name: "launchigniter",
       url: "https://launchigniter.com/",
-    }, */
+    },
   ];
 
   const handleCheckboxChange = (id: string) => {
@@ -741,6 +743,7 @@ export const Main = ({ className, filename }: MainProps) => {
                 "foundrlist",
                 "nicklaunches",
                 "launchlist",
+                "launchigniter",
               ].map((siteId) => {
                 const site = siteOptions.find((s) => s.id === siteId);
                 return site ? (
