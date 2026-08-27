@@ -5,7 +5,7 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://peerpush.net/p/*"],
+  matches: ["https://peerpush.com/p/*"],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
@@ -18,7 +18,7 @@ export default defineContentScript({
     const visitSiteUrls = [];
 
     for (const a of document.querySelectorAll("a")) {
-      if (a.innerText.trim() === "Visit site") {
+      if (a.innerText.toLowerCase().trim().includes("visit")) {
         const href = a.getAttribute("href");
         if (href) {
           visitSiteUrls.push(href);

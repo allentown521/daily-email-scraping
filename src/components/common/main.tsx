@@ -59,6 +59,7 @@ export const Main = ({ className, filename }: MainProps) => {
     productfame: false,
     launchlist: false,
     launchigniter: false,
+    peerpush: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -143,7 +144,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.startupbase = true;
         newSelection.hunt0 = true;
         newSelection.productfame = true;
-        //newSelection.peerpush = true;
+        newSelection.peerpush = true;
       }
 
       return newSelection;
@@ -254,13 +255,13 @@ export const Main = ({ className, filename }: MainProps) => {
       name: "launchitx",
       url: "https://launchitx.com/trending?filter=yesterday",
     },
-    /*     {
+    {
       id: "peerpush",
       name: "peerpush",
       openInSingleBrowser: true,
 
-      url: "https://peerpush.net/?view=live",
-    }, */
+      url: "https://peerpush.com/?view=race",
+    },
     {
       id: "nxgntools",
       name: "nxgntools",
@@ -693,6 +694,7 @@ export const Main = ({ className, filename }: MainProps) => {
                 "startupbase",
                 "hunt0",
                 "productfame",
+                "peerpush",
               ].map((siteId) => {
                 const site = siteOptions.find((s) => s.id === siteId);
                 return site ? (
