@@ -285,6 +285,7 @@ export default defineContentScript({
         totalItems,
         `Opening item ${currentIndex + 1}/${totalItems}`,
       );
+      console.log(`Opening item ${currentIndex + 1}/${totalItems}`);
       (items[currentIndex] as HTMLElement).click();
       phase = "clicked";
       lastClickTime = Date.now();

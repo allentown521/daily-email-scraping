@@ -142,19 +142,77 @@ const OBFUSCATION_PATTERNS = [
   { pattern: /\s+dot\s+/gi, replacement: "." },
 ];
 
+// 路径边界：/ - _ 之后、常见页面后缀（.html/.php/.aspx 等）、或路径结尾。
+// 加后缀支持是因为 /contact.html、/contact.php 这类路径以前完全匹配不上。
+const PATH_SEP = String.raw`(?:[\/\-_]|\.(?:html?|htm|php|aspx?|jsp|do)$|$)`;
+
 const CANDIDATE_PATTERNS: Record<string, { pattern: RegExp; score: number }> = {
-  contact: { pattern: /\/contact([\/-]|$)/i, score: 100 },
+  contact: {
+    pattern: new RegExp(String.raw`\/contact${PATH_SEP}`, "i"),
+    score: 100,
+  },
   "contact-us": { pattern: /\/contact[-_]?us/i, score: 95 },
-  support: { pattern: /\/support/i, score: 90 },
-  about: { pattern: /\/about([\/-]|$)/i, score: 85 },
+  // 欧陆语言站点的联系页：德/意/西/葡语
+  "multi-lang": {
+    pattern: new RegExp(
+      String.raw`\/(?:kontakt|contatt[oi]|contact[ao](?:nos)?|nous-contacter)${PATH_SEP}`,
+      "i",
+    ),
+    score: 90,
+  },
+  support: {
+    pattern: new RegExp(String.raw`\/support${PATH_SEP}`, "i"),
+    score: 88,
+  },
+  "get-in-touch": {
+    pattern: new RegExp(String.raw`\/get[-_]?in[-_]?touch${PATH_SEP}`, "i"),
+    score: 85,
+  },
+  about: {
+    pattern: new RegExp(String.raw`\/about${PATH_SEP}`, "i"),
+    score: 85,
+  },
   "about-us": { pattern: /\/about[-_]?us/i, score: 80 },
-  privacy: { pattern: /\/privacy/i, score: 75 },
-  terms: { pattern: /\/terms/i, score: 75 },
-  help: { pattern: /\/help/i, score: 65 },
-  legal: { pattern: /\/legal/i, score: 45 },
-  impressum: { pattern: /\/impressum/i, score: 40 },
-  team: { pattern: /\/team/i, score: 30 },
+  privacy: {
+    pattern: new RegExp(String.raw`\/privacy${PATH_SEP}`, "i"),
+    score: 75,
+  },
+  terms: {
+    pattern: new RegExp(String.raw`\/terms${PATH_SEP}`, "i"),
+    score: 75,
+  },
+  help: { pattern: new RegExp(String.raw`\/help${PATH_SEP}`, "i"), score: 65 },
+  legal: {
+    pattern: new RegExp(String.raw`\/legal${PATH_SEP}`, "i"),
+    score: 45,
+  },
+  impressum: {
+    pattern: new RegExp(String.raw`\/impressum${PATH_SEP}`, "i"),
+    score: 45,
+  },
+  imprint: {
+    pattern: new RegExp(String.raw`\/imprint${PATH_SEP}`, "i"),
+    score: 45,
+  },
+  team: { pattern: new RegExp(String.raw`\/team${PATH_SEP}`, "i"), score: 30 },
 };
+
+// 锚文本（链接文字）兜底：很多站点的联系页路径里没有 contact
+// （如 /company、/hello、/connect），但链接文字写着 "Contact"，按路径会漏掉。
+const ANCHOR_PATTERNS: { pattern: RegExp; score: number; type: string }[] = [
+  { pattern: /^contact(?: us)?$/i, score: 88, type: "contact" },
+  { pattern: /^get in touch$/i, score: 85, type: "get-in-touch" },
+  { pattern: /^(?:e-?mail|mail|write)(?: us)?$/i, score: 85, type: "contact" },
+  { pattern: /^support$/i, score: 70, type: "support" },
+  { pattern: /^about(?: us)?$/i, score: 65, type: "about" },
+  { pattern: /^help$/i, score: 50, type: "help" },
+  { pattern: /^(?:our )?team$/i, score: 45, type: "team" },
+];
+
+// 判断 fetch 拿到的内容是否需要升级为浏览器渲染。
+// 以空壳特征（SPA 挂载点）为主，长度只用来兜住空响应/错误页——
+// 阈值定得低是为了不误伤 3-5KB 的精简静态页（如手写 contact.html）。
+const SKELETON_MIN_LENGTH = 2000;
 
 function isSkeleton(html: string): boolean {
   const skeletonSignals = [
@@ -221,7 +279,16 @@ const HEADERS = {
   "Upgrade-Insecure-Requests": "1",
 };
 
-async function attemptFetch(url: string, timeoutMs: number): Promise<string> {
+interface FetchResult {
+  html: string;
+  // 是否已尝试过浏览器渲染兜底（无论成败），用于避免上层重复开 tab
+  browserTried: boolean;
+}
+
+async function attemptFetch(
+  url: string,
+  timeoutMs: number,
+): Promise<FetchResult> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -229,24 +296,39 @@ async function attemptFetch(url: string, timeoutMs: number): Promise<string> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: HEADERS,
+      // 绕过 HTTP 缓存直连服务器拉全量最新内容：缓存协商（304）回填的
+      // 副本可能过期或不完整。批量抓取一次性读取，内容完整性优先于流量。
+      cache: "reload",
     });
     clearTimeout(id);
 
-    if (!response.ok) return "";
+    // 资源不存在：浏览器渲染同样拿不到内容，直接放弃，省去一次 tab 开销。
+    // （失效的候选链接很常见，否则每个都要白等一次浏览器渲染）
+    if (response.status === 404 || response.status === 410) {
+      return { html: "", browserTried: false };
+    }
 
-    let html = await response.text();
+    // 其余状态码不拦截（304 的 body 为空、403/429 反爬常返回错误页），
+    // 统一交给下方 isSkeleton 判断——空/过小内容自动升级为浏览器渲染兜底
+    const html = await response.text();
     if (isSkeleton(html)) {
       const browserHtml = await fetchWithBrowserTab(url);
-      if (browserHtml) html = browserHtml;
+      if (browserHtml) return { html: browserHtml, browserTried: true };
+      // tab 也拿不到内容：标记已尝试过，避免上层重复开 tab；
+      // 保留原骨架 html——SPA 的骨架里可能仍有可提取的导航链接
+      return { html, browserTried: true };
     }
-    return html;
+    return { html, browserTried: false };
   } catch (error) {
     clearTimeout(id);
     throw error;
   }
 }
 
-async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
+async function fetchWithTimeout(
+  url: string,
+  timeout = 30000,
+): Promise<FetchResult> {
   const retryDelay = 100;
   const maxRetries = 5;
 
@@ -260,7 +342,7 @@ async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
           `Failed to fetch ${url} after ${maxRetries} retries:`,
           errorMsg,
         );
-        return "";
+        return { html: "", browserTried: false };
       }
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.warn(
@@ -269,7 +351,7 @@ async function fetchWithTimeout(url: string, timeout = 30000): Promise<string> {
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
-  return "";
+  return { html: "", browserTried: false };
 }
 
 function normalizeEmail(email: string): string {
@@ -432,6 +514,8 @@ function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
   const hrefRegex = /href=["']([^"']+)["']/gi;
   const baseUrlObj = new URL(baseUrl);
   const seen = new Set<string>();
+  // 一次性建立 href → 链接文字 的索引，避免对每个 href 重复扫描整份 HTML
+  const anchorTexts = buildAnchorTextMap(html);
 
   const matches = html.matchAll(hrefRegex);
   for (const match of matches) {
@@ -460,19 +544,45 @@ function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
       if (seen.has(pathname)) continue;
       seen.add(pathname);
 
-      // Check against patterns
+      // 1) 按路径匹配
+      let pathScore = 0;
+      let pathType = "";
       for (const [type, { pattern, score }] of Object.entries(
         CANDIDATE_PATTERNS,
       )) {
         if (pattern.test(pathname)) {
-          candidates.push({
-            url: candidateUrl.toString(),
-            score,
-            type,
-          });
+          pathScore = score;
+          pathType = type;
           break;
         }
       }
+
+      // 2) 按链接文字匹配。路径命中后照样继续匹配文字：
+      //    两者都命中说明互相印证、可信度更高（加分）；
+      //    路径看不出名的（如 /company）则靠文字兜底。
+      let anchorScore = 0;
+      let anchorType = "";
+      const anchorText = anchorTexts.get(href) ?? "";
+      if (anchorText) {
+        for (const { pattern, score, type } of ANCHOR_PATTERNS) {
+          if (pattern.test(anchorText)) {
+            anchorScore = score;
+            anchorType = type;
+            break;
+          }
+        }
+      }
+
+      // 两个信号都没命中则跳过；取两者较高分
+      if (pathScore === 0 && anchorScore === 0) continue;
+      const finalScore = Math.max(pathScore, anchorScore);
+      const finalType = pathScore >= anchorScore ? pathType : anchorType;
+
+      candidates.push({
+        url: candidateUrl.toString(),
+        score: finalScore,
+        type: finalType,
+      });
     } catch {
       // Skip invalid URLs
     }
@@ -482,15 +592,55 @@ function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
   return candidates.sort((a, b) => b.score - a.score).slice(0, 20);
 }
 
+// 扫描整份 HTML，一次性建立 href → 链接文字 的索引。
+// 文字过长（>40）说明不是导航链接，直接丢弃。
+function buildAnchorTextMap(html: string): Map<string, string> {
+  const map = new Map<string, string>();
+  const regex = /<a\s[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a\s*>/gi;
+
+  for (const match of html.matchAll(regex)) {
+    const href = match[1];
+    if (!href || map.has(href)) continue;
+
+    const text = (match[2] || "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (text && text.length <= 40) {
+      map.set(href, text);
+    }
+  }
+
+  return map;
+}
+
 async function scrapeLevel1(
   url: string,
 ): Promise<{ emails: string[]; html: string }> {
-  const html = await fetchWithTimeout(url);
+  const { html, browserTried } = await fetchWithTimeout(url);
   if (!html) {
     return { emails: [], html: "" };
   }
 
   const emails = extractEmailsFromText(html);
+
+  // fetch 拿到的是未执行 JS 的静态 HTML。Next.js/SPA 站的邮箱常在
+  // hydration 之后才插入 DOM，静态源码里搜不到。0 邮箱且尚未做过
+  // 浏览器渲染时，用后台 tab 完整渲染兜底一次（仅首页，控制成本）。
+  if (emails.length === 0 && !browserTried) {
+    const renderedHtml = await fetchWithBrowserTab(url);
+    if (renderedHtml) {
+      const renderedEmails = extractEmailsFromText(renderedHtml);
+      if (renderedEmails.length > 0) {
+        // 渲染后的 DOM 导航链接更全，后续用它找候选页
+        return { emails: renderedEmails, html: renderedHtml };
+      }
+    }
+  }
+
   return { emails, html };
 }
 
@@ -509,18 +659,14 @@ async function scrapeLevel2and3(
 
   const allEmails = new Set<string>();
 
-  // Fetch top candidates sequentially
+  // 抓取全部候选页。不再"命中一个就停"——不同页面常有不同联系人的邮箱，
+  // 提前 break 会漏掉 team 页、about 页上的个人邮箱。
   for (const candidate of candidates) {
-    const candidateHtml = await fetchWithTimeout(candidate.url);
+    const { html: candidateHtml } = await fetchWithTimeout(candidate.url);
     const emails = extractEmailsFromText(candidateHtml);
     for (const email of emails) {
       console.log(`[Level ${candidate.type}] Found email: ${email}`);
       allEmails.add(email);
-    }
-
-    // If we found emails, no need to check more candidates
-    if (allEmails.size > 0) {
-      break;
     }
   }
 
@@ -535,40 +681,36 @@ export async function scrapeEmails(url: string): Promise<ScrapedEmail[]> {
     // Level 1: Direct page fetch (with automatic fallback to background tab)
     const { emails: level1Emails, html } = await scrapeLevel1(url);
 
-    if (level1Emails.length > 0) {
-      for (const email of level1Emails) {
-        const isReachable = await verifyEmail(email);
-        if (isReachable) {
-          scrapedEmails.push({
-            email: email.toLowerCase(),
-            foundOn: url,
-            timestamp,
-            source: "mailto",
-          });
-        } else {
-          console.warn(`[verifyEmail] Email is unreachable, skipped: ${email}`);
-        }
-      }
-      if (scrapedEmails.length > 0) {
-        return scrapedEmails;
-      }
+    // Level 2 & 3: 联系/关于/团队等候选页。
+    // 即便首页已抓到邮箱也照样抓候选页并合并——首页常见的是 info@ 这类
+    // 角色邮箱，真正的联系人邮箱往往在 contact/team/about 页上。
+    const level23Emails = await scrapeLevel2and3(url, html);
+
+    // 合并去重（首页邮箱优先，标记为 mailto；其余标记为 contact-page）
+    const seen = new Set<string>();
+    const all: { email: string; source: "mailto" | "contact-page" }[] = [];
+    for (const email of level1Emails) {
+      if (seen.has(email)) continue;
+      seen.add(email);
+      all.push({ email, source: "mailto" });
+    }
+    for (const email of level23Emails) {
+      if (seen.has(email)) continue;
+      seen.add(email);
+      all.push({ email, source: "contact-page" });
     }
 
-    // Level 2 & 3: Candidate pages
-    const level23Emails = await scrapeLevel2and3(url, html);
-    if (level23Emails.length > 0) {
-      for (const email of level23Emails) {
-        const isReachable = await verifyEmail(email);
-        if (isReachable) {
-          scrapedEmails.push({
-            email: email.toLowerCase(),
-            foundOn: url,
-            timestamp,
-            source: "contact-page",
-          });
-        } else {
-          console.warn(`[verifyEmail] Email is unreachable, skipped: ${email}`);
-        }
+    for (const { email, source } of all) {
+      const isReachable = await verifyEmail(email);
+      if (isReachable) {
+        scrapedEmails.push({
+          email: email.toLowerCase(),
+          foundOn: url,
+          timestamp,
+          source,
+        });
+      } else {
+        console.warn(`[verifyEmail] Email is unreachable, skipped: ${email}`);
       }
     }
 
