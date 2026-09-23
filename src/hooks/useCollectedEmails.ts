@@ -17,9 +17,11 @@ export const useCollectedEmails = () => {
     }
 
     // Create CSV content
-    const headers = ["email", "url", "time"];
+    const headers = ["email", "name", "url", "time"];
     const rows = emails.map((email) => [
       email.email,
+      // 旧数据（加字段之前抓的）没有 name，留空而不是显示 undefined
+      email.name || "",
       email.foundOn,
       new Date(email.timestamp).toISOString(),
     ]);
