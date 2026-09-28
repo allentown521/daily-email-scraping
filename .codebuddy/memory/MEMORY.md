@@ -22,6 +22,14 @@
 ## 网站技术栈速查（影响内容脚本设计）
 - **launchigniter.com**：Next.js App Router SPA（有 `self.__next_f` RSC flight，无 `__NEXT_DATA__`）。列表页 `/weekly-launches/*` 的 `div.cursor-pointer` 卡片，点击后客户端软导航到 `/launch/{slug}` 详情（document 不销毁，滚动位置保持）。**列表→详情→Back 之间内容脚本 `main()` 不会重新执行**，所以"依次点击"流程必须放在常驻的列表脚本里用轮询+pathname 判断驱动；详情脚本仅作整页加载兜底。进度用 `sessionStorage` key `launchigniter_progress_index` 共享以支持刷新续跑。
 
+## 内容脚本通用模式（列表页滚动）
+- **列表页滚动必须是「渐进式慢滚」，不要直接 `scrollTo(document.body.scrollHeight)`**（用户 2026-09-27 明确指出直接跳底部不对）。标准写法参考 `src/app/peerlist.content/index.tsx`：
+  - 每次只滚 0.5~1 屏：`scrollTarget = min(scrollY + viewportHeight * (0.5 + Math.random()*0.5), scrollHeight - viewportHeight*0.2)`，`behavior: "smooth"`
+  - 每次滚动后随机等待 5~7s；`maxScrollAttempts = 80`，`maxNoChangeCount = 5`
+  - 终止条件要同时看「页面高度未变 **且** 收集到的条目数未变」，只累加一次 noChange
+  - 后台标签要暂停：`document.hidden` 时把面板置为 paused（⏸️ / `#ff6b6b`），`while (document.hidden) await sleep(1000)`，恢复后继续且不消耗 pageCount
+- 收集链接优先用 DOM 锚点 + `new URL(href, location.origin)` 规范化（可过滤 pathname 前缀、去 query/hash），比 peerlist 那种对 `document.documentElement.innerHTML` 跑正则更可控。
+
 ## 内容脚本通用模式（列表→详情→Back 类站点）
 - 若目标是 SPA（客户端路由），把完整编排（点列表项→抓详情邮箱→点 Back→下一个）放在常驻列表脚本内，靠 `setInterval/while+sleep` + `window.location.pathname` 状态机驱动；详情脚本只在整页加载时能单独跑，作兜底。
 - TypeScript 状态机阶段变量若用字面量联合并在循环体里重赋值，易被控制流窄化误报（2367），用 `let phase = "init" as string;` + `const p = phase` 快照规避。

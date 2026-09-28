@@ -60,6 +60,7 @@ export const Main = ({ className, filename }: MainProps) => {
     launchlist: false,
     launchigniter: false,
     peerpush: false,
+    smollaunch: false,
   });
 
   const [groupSelection, setGroupSelection] = useState<Record<string, boolean>>(
@@ -128,6 +129,7 @@ export const Main = ({ className, filename }: MainProps) => {
         newSelection.launchigniter = true;
       } else if (group === "lastWeek" && newGroupSelection.lastWeek) {
         newSelection.tinylaunch = true;
+        newSelection.smollaunch = true;
       } else if (group === "daily" && newGroupSelection.daily) {
         newSelection.productHunt = true;
         newSelection.startupfast = true;
@@ -361,6 +363,11 @@ export const Main = ({ className, filename }: MainProps) => {
       openInSingleBrowser: true,
       name: "launchigniter",
       url: "https://launchigniter.com/",
+    },
+    {
+      id: "smollaunch",
+      name: "smollaunch",
+      url: "https://smollaunch.com/",
     },
   ];
 
@@ -789,7 +796,7 @@ export const Main = ({ className, filename }: MainProps) => {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {["tinylaunch"].map((siteId) => {
+              {["tinylaunch", "smollaunch"].map((siteId) => {
                 const site = siteOptions.find((s) => s.id === siteId);
                 return site ? (
                   <div key={site.id} className="flex items-center space-x-2">
