@@ -62,6 +62,12 @@ const TEST_DOMAINS = new Set([
   "setapp.com",
   "creem.io",
   "cloudflare.com",
+  "finalizo.com",
+  "nebulacraftdesign.com",
+  "anthropic.com",
+  "manus.ai",
+  "yourcompany.com",
+  "apple.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
@@ -810,13 +816,17 @@ function stripPageNameWords(chunk: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .filter((word) => {
-      const bare = word.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+      const bare = word
+        .toLowerCase()
+        .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
       // 纯符号（"Desk & Park" 里的 &）没有字母数字可比对，保留原样
       if (bare === "") return true;
       return !PAGE_NAME_WORDS.has(bare);
     });
 
-  const joined = kept.join(" ").replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  const joined = kept
+    .join(" ")
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
   // 只剩分隔符/"!" 之类符号也算剥空（"Attention Required! | Cloudflare" → ""）
   return /\p{L}|\p{N}/u.test(joined) ? joined : "";
 }
@@ -938,7 +948,6 @@ function extractTitle(head: string): string {
   return match ? normalizeText((match[1] ?? "").replace(/<[^>]*>/g, "")) : "";
 }
 
-
 // 托管平台域名（xxx.vercel.app、xxx.chatgpt.site）：注册标签是平台名而不是品牌，
 // 品牌在最左边的标签里。必须在 `.` 边界上匹配，"superfly.dev" 不会被 "fly.dev" 误判。
 const HOSTING_PLATFORM_SUFFIXES = [
@@ -1009,7 +1018,10 @@ function getDomainLabels(url: string): string[] {
     const platformLabels = getHostingPlatformBrandLabels(hostname);
     if (platformLabels.length > 0) return platformLabels;
 
-    const labels = hostname.replace(/^www\./i, "").split(".").filter(Boolean);
+    const labels = hostname
+      .replace(/^www\./i, "")
+      .split(".")
+      .filter(Boolean);
     if (labels.length === 0) return [];
 
     let tldStart = labels.length - 1;
@@ -1222,7 +1234,9 @@ function cleanNameValue(raw: string): string {
 
   // 分隔符：| · • – — , : 以及「点号后接空格」（避免切坏 milliseconds.ai、
   // tagio.art 这类名字里的点）
-  const chunks = text.split(/\s*[|·•]\s*|\s+[-–—]\s+|[,，、]\s*|\s*[:：]\s+|\.\s+/);
+  const chunks = text.split(
+    /\s*[|·•]\s*|\s+[-–—]\s+|[,，、]\s*|\s*[:：]\s+|\.\s+/,
+  );
 
   for (const chunk of chunks) {
     const cleaned = stripPageNameWords(chunk);
