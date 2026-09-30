@@ -17,11 +17,10 @@ export const useCollectedEmails = () => {
     }
 
     // Create CSV content
-    const headers = ["email", "name", "url", "time"];
+    // 只导出邮箱相关的三列：name（站点/产品名）仍存在本地存储里，不进 CSV
+    const headers = ["email", "url", "time"];
     const rows = emails.map((email) => [
       email.email,
-      // 旧数据（加字段之前抓的）没有 name，留空而不是显示 undefined
-      email.name || "",
       email.foundOn,
       new Date(email.timestamp).toISOString(),
     ]);

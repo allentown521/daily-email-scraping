@@ -16,7 +16,7 @@
   2. **`og:site_name` → `og:title` → `<title>`**：每个值经 `cleanNameValue`（先扫 head 再扫全文，因有站点把 meta 渲染进 body）——按 `| · • – — , : .（后接空格）` 切块，逐块剥掉 `PAGE_NAME_PHRASES`/`PAGE_NAME_WORDS`（privacy / terms / contact / home / sign in / 403 / cloudflare / 登录 / 隐私政策 …），**取第一个剥完还剩下的块**；全剥空或 >60 字符则该来源作废，换下一个。（试过整条保留：名字会带上标语，70 样本 35 个变化，已否决。）
   3. **域名兜底**：`getDomainLabels()[0]` 经 `capitalizeLabel`（连字符拆词大写）；子域名非通用前缀、托管平台左标签（`*.vercel.app` 等）也参与。
   - 已知代价（70 样本回归 18 个变化）：`glp1.app→Peptide Tracker` ✅、`oriane/lead-sparker→Lead Sparker` ✅、`gameplayer/nobrl→NovelMorrow` ✅；但「描述 | 品牌」型标题会拿到描述（`niubigeo`、`crecaly`、`gmapsscout`、`planningdatahub`、`check.hryp`），`saladict→AllenTown`、`solluz→Solar Panel Company in India` 翻回旧值。要修这些只能恢复域名打分（旧版 70 样本里仅 glp1 翻车）——用户选择保持简单。
-  - CSV 导出列：`email,name,url,time`。改动此逻辑务必用真实站点验证（子页面、无 og、非英文站、商店链接）。
+  - CSV 导出列：`email,url,time`（2026-09-30 起不再导出 name）。改动此逻辑务必用真实站点验证（子页面、无 og、非英文站、商店链接）。
 - **潜在增强（用户尚未采纳）**：可补充角色型前缀黑名单（info、sales、support、admin、contact、hello、marketing、billing、accounts、team、careers），对冷邮件转化差。
 
 ## 网站技术栈速查（影响内容脚本设计）
