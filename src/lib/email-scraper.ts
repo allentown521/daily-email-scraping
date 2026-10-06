@@ -69,6 +69,8 @@ const TEST_DOMAINS = new Set([
   "yourcompany.com",
   "apple.com",
   "perco.app",
+  "resend.com",
+  "thingstohave.app",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
