@@ -71,7 +71,7 @@ const TEST_DOMAINS = new Set([
   "perco.app",
   "resend.com",
   "thingstohave.app",
-  "dodopayments.com",
+  "dodopayments.com","gomailmerge.com"
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
