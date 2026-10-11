@@ -18,15 +18,32 @@ export default defineContentScript({
       return;
     }
     const urls = [];
-    let pageCount = 0;
-    let previousHeight = 0;
-    let currentHeight = document.body.scrollHeight;
-    let noChangeCount = 0;
-    const maxNoChangeCount = 5; // 增加到5次，给更多机会确认是否真的加载完毕
-    const maxScrollAttempts = 1; // 设置最大滚动尝试次数，防止无限循环
+    let clickCount = 0;
+    const maxClicks = 200; // 安全上限，防止无限循环
 
-    // 记录已经看到的产品数量，用于检测是否有新内容
-    let previousProductCount = 0;
+    // 查找页面中包含 "show more" 或 "show last" 文本的按钮（如 "Show 20 more" / "Show last"）
+    const findShowMoreButton = () => {
+      const buttons = Array.from(document.querySelectorAll("button"));
+      return buttons.find((b) => {
+        const text = (b.textContent || "").toLowerCase();
+        return (
+          (text.includes("show") && text.includes("more")) ||
+          text.includes("show last")
+        );
+      });
+    };
+
+    // 收集页面中的产品/启动项目 URL
+    const collectUrls = () => {
+      document.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (href?.includes("utm_source=foundrlist")) {
+          if (!urls.includes(href)) {
+            urls.push(href);
+          }
+        }
+      });
+    };
 
     // 创建持续显示的状态面板
     let statusPanel = null;
@@ -188,7 +205,7 @@ export default defineContentScript({
         updateStatus(
           "paused",
           urls.length,
-          `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
+          "Loading...",
           "⚠️ Keep this tab in foreground<br>Will resume automatically when you return",
         );
         return false;
@@ -196,121 +213,69 @@ export default defineContentScript({
       return true;
     };
 
-    while (pageCount < maxScrollAttempts && noChangeCount < maxNoChangeCount) {
+    // 先收集首页已有的 URL
+    collectUrls();
+    updateStatus("running", urls.length, "0%", "Looking for Show more button...");
+
+    // 循环查找 "Show more" 按钮：找到就点击并等待 3 秒，找不到说明数据已全部加载
+    while (clickCount < maxClicks) {
       // 检查页面是否在前台
       if (!checkVisibility()) {
-        console.log("Page is in background, pausing scrolling");
-        // 等待页面重新可见，但不增加 pageCount
+        console.log("Page is in background, pausing");
+        // 等待页面重新可见
         while (document.hidden) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        console.log("Page is now visible, resuming scrolling");
+        console.log("Page is now visible, resuming");
+        updateStatus("running", urls.length, "Loading...", "✨ Resuming...");
+      }
+
+      // 查找包含 "show more" 文本的按钮
+      const showMoreButton = findShowMoreButton();
+
+      // 没有找到该按钮，说明数据已全部加载完成
+      if (!showMoreButton) {
+        console.log(
+          "Show more button not found, data loading completed.",
+        );
         updateStatus(
           "running",
           urls.length,
-          `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-          "✨ Resuming scroll...",
+          "100%",
+          "✅ All data loaded, ready to scrape",
         );
+        break;
       }
 
-      pageCount++;
+      clickCount++;
 
-      previousHeight = currentHeight;
+      // 点击按钮加载更多数据
+      console.log(`Clicking Show more button (attempt ${clickCount})`);
+      showMoreButton.click();
 
-      // 使用更自然的渐进式滚动，模拟人类滚动行为
-      const viewportHeight = window.innerHeight;
-      const scrollPosition = window.scrollY;
+      // 等待 3 秒让数据加载完成
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
-      // 随机化滚动距离，使其更像人类行为，同时确保向下滚动
-      const randomFactor = 0.5 + Math.random() * 0.5; // 0.5-1.0之间的随机数
-      const scrollStep = viewportHeight * randomFactor;
+      // 收集新加载的 URL
+      collectUrls();
 
-      // 计算目标滚动位置，但不要超过文档高度
-      const scrollTarget = Math.min(
-        scrollPosition + scrollStep,
-        document.body.scrollHeight - viewportHeight * 0.2, // 留出一点底部空间以触发加载
+      // 读取按钮上剩余的条目数（如 "99 left"）
+      const leftMatch = (showMoreButton.textContent || "").match(
+        /(\d+)\s+left/i,
       );
+      const leftText = leftMatch ? `${leftMatch[1]} left` : "";
 
-      // 执行滚动
-      window.scrollTo({
-        top: scrollTarget,
-        behavior: "smooth",
-      });
-
-      // 等待页面响应和加载，增加随机等待时间
-      const waitTime = 5000 + Math.random() * 2000; // 5-7秒随机等待
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-
-      // 更新当前高度
-      currentHeight = document.body.scrollHeight;
-
-      // 检查页面内容是否有变化并收集URL
-      const html = document.documentElement.innerHTML;
-      const regex = /\/[^\/]+\/(product|startup)\/[^\/"]+/g;
-      let match;
-      const currentProducts = [];
-
-      /*       while ((match = regex.exec(html)) !== null) {
-        const fullMatch = match[0];
-        const type = match[1];
-        const id = fullMatch.split(`/${type}/`)[1];
-
-        // 收集ID
-        const productKey = `${type}/${id}`;
-        if (!currentProducts.includes(productKey)) {
-          currentProducts.push(productKey);
-        }
-
-        // 同时收集URL
-        const url = `https://foundrlist.com/${type}/${id}`;
-        if (!urls.includes(url)) {
-          urls.push(url);
-        }
-      } */
-
-      document.querySelectorAll("a").forEach((a) => {
-        const href = a.getAttribute("href");
-        if (href?.includes("utm_source=foundrlist")) {
-          if (!urls.includes(href)) {
-            urls.push(href);
-          }
-        }
-      });
-
-      // 检查高度和产品数量是否变化
-      if (
-        previousHeight === currentHeight &&
-        previousProductCount === currentProducts.length
-      ) {
-        noChangeCount++;
-        console.log(
-          `No changes detected ${noChangeCount}/${maxNoChangeCount} times (height: ${currentHeight}, projects: ${currentProducts.length})`,
-        );
-      } else {
-        noChangeCount = 0; // 重置计数器
-        previousProductCount = currentProducts.length;
-      }
-
-      console.log(
-        `Scrolling attempt ${pageCount}/${maxScrollAttempts}, position: ${Math.round(
-          window.scrollY,
-        )}/${document.body.scrollHeight}, collecting URLs... length: ${
-          urls.length
-        }`,
-      );
-
-      // 更新状态面板
       updateStatus(
         "running",
         urls.length,
-        `${Math.round((pageCount / maxScrollAttempts) * 100)}%`,
-        `📍 Position: ${Math.round(window.scrollY)}/${
-          document.body.scrollHeight
-        }px`,
+        "Loading...",
+        `🔘 Clicked Show more ${clickCount} times${
+          leftText ? `<br>📉 ${leftText}` : ""
+        }`,
       );
     }
 
-    console.log(`Scrolling completed. Total URLs collected: ${urls.length}`);
+    console.log(`Data loading completed. Total URLs collected: ${urls.length}`);
 
     // 开始打开标签页
     updateStatus(
