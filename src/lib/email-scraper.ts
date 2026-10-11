@@ -75,6 +75,7 @@ const TEST_DOMAINS = new Set([
   "gomailmerge.com",
   "luneyapp.com",
   "recounts.net",
+  "datatilsynet.dk",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
