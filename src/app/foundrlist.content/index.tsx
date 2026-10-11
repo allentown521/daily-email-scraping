@@ -5,7 +5,11 @@ import { Message, sendMessage } from "@/lib/messaging";
 import { isPurchasedOrTrial, scraperEnabled } from "@/lib/utils";
 
 export default defineContentScript({
-  matches: ["https://foundrlist.com/home", "https://www.foundrlist.com/home"],
+  matches: [
+    "https://foundrlist.com/home",
+    "https://www.foundrlist.com/home",
+    "https://www.foundrlist.com",
+  ],
   cssInjectionMode: "ui",
   runAt: "document_end",
 
@@ -317,12 +321,12 @@ export default defineContentScript({
       "completed",
       urls.length,
       "100%",
-      "🔄 Opening product pages...",
+      "🔄 Scraping product pages...",
     );
 
     let openedTabsCount = 0;
     for (const url of urls) {
-      await sendMessage(Message.OPEN_TAB, url);
+      await sendMessage(/* Message.OPEN_TAB */ Message.SCRAPE_EMAILS, url);
       openedTabsCount++;
 
       // 实时显示已打开的网页数
@@ -330,7 +334,7 @@ export default defineContentScript({
         "running",
         urls.length,
         "100%",
-        `🔄 Opening pages...<br>📂 Opened: ${openedTabsCount}/${urls.length}`,
+        `🔄 Scraping pages...<br>📂 Opened: ${openedTabsCount}/${urls.length}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -342,7 +346,7 @@ export default defineContentScript({
       "completed",
       urls.length,
       "100%",
-      `✅ Completed!<br>📂 Opened: ${openedTabsCount}/${urls.length} pages`,
+      `✅ Completed!<br>📂 Scraped: ${openedTabsCount}/${urls.length} pages`,
     );
 
     // 5秒后移除状态面板

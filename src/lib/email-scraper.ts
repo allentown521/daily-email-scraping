@@ -74,6 +74,7 @@ const TEST_DOMAINS = new Set([
   "dodopayments.com",
   "gomailmerge.com",
   "luneyapp.com",
+  "recounts.net",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
