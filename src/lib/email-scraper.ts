@@ -99,6 +99,7 @@ const INCLUDE_TEST_DOMAINS = new Set([
   "sentry.wixpress.com",
   "sentry.io",
   "atlassian.net",
+  "facebook.com",
 ]);
 
 const FILE_EXTENSIONS = new Set([
