@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Theme, type User } from "~/types";
 import { type WxtStorageItem, storage as browserStorage } from "#imports";
-import type { ScrapedEmail } from "./email-scraper";
+import type { ReacherCacheMap, ScrapedEmail } from "./email-scraper";
 
 export const StorageKey = {
   THEME: "local:theme",
   USER: "local:user",
   COLLECTED_EMAILS: "local:collected_emails",
+  REACHER_CACHE: "local:reacher_cache",
 } as const;
 
 export type StorageKey = (typeof StorageKey)[keyof typeof StorageKey];
@@ -22,6 +23,13 @@ const storage = {
     StorageKey.COLLECTED_EMAILS,
     {
       fallback: [],
+    },
+  ),
+  // Reacher 校验结果缓存：email -> { reachable, cachedAt }
+  [StorageKey.REACHER_CACHE]: browserStorage.defineItem<ReacherCacheMap>(
+    StorageKey.REACHER_CACHE,
+    {
+      fallback: {},
     },
   ),
 } as const;

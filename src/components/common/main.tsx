@@ -5,8 +5,10 @@ import {
   validatePremiumOnline,
 } from "@/service/premium";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { browser } from "wxt/browser";
 import { useCollectedEmails } from "~/hooks/useCollectedEmails";
+import { StorageKey, getStorage } from "~/lib/storage";
 import {
   checkIsInTrial,
   cn,
@@ -88,6 +90,26 @@ export const Main = ({ className, filename }: MainProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const { emailCount, downloadCSV, clearAllEmails } = useCollectedEmails();
+
+  const clearReacherCache = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to clear the Reacher verification cache? Emails will be verified again on the next scraping run.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // 后台 service worker 通过 watch 监听这个 key，删除后内存缓存会同步失效
+      await getStorage(StorageKey.REACHER_CACHE).removeValue();
+      toast.success("Reacher cache cleared");
+    } catch (error) {
+      console.error("Failed to clear Reacher cache:", error);
+      toast.error("Failed to clear Reacher cache");
+    }
+  };
+
   const handleGroupCheckboxChange = (group: string) => {
     const isBeingSelected = !groupSelection[group]; // 是否被选中
 
@@ -876,6 +898,15 @@ export const Main = ({ className, filename }: MainProps) => {
                 🗑️ Clear All
               </Button>
             </div>
+
+            {/* Reacher 校验结果缓存（有效期 1 天） */}
+            <Button
+              onClick={clearReacherCache}
+              variant="outline"
+              className="flex w-full items-center justify-center gap-2 text-sm"
+            >
+              🧹 Clear Reacher Cache
+            </Button>
           </CardContent>
         </Card>
 

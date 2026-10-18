@@ -1,3 +1,5 @@
+import { StorageKey, getStorage } from "~/lib/storage";
+
 export interface ScrapedEmail {
   email: string;
   // 站点/产品名：优先 og:site_name，其次 <title> 中提取的品牌片段，最后退化到域名主标签
@@ -76,6 +78,7 @@ const TEST_DOMAINS = new Set([
   "luneyapp.com",
   "recounts.net",
   "datatilsynet.dk",
+  "duck.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
@@ -451,14 +454,83 @@ function extractEmailsFromText(text: string): string[] {
 
 export { extractEmailsFromText, normalizeEmail, validateEmail };
 
+// ---------- Reacher 校验结果缓存 ----------
+// 后台是 service worker，进程会被浏览器回收重启，所以缓存只放扩展存储：
+// email -> { reachable, cachedAt }，有效期 1 天。
+const REACHER_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 天
+
+export interface ReacherCacheEntry {
+  reachable: boolean;
+  cachedAt: number;
+}
+
+export type ReacherCacheMap = Record<string, ReacherCacheEntry>;
+
+const reacherCacheItem = getStorage(StorageKey.REACHER_CACHE);
+
+// 读缓存只做加速，任何异常/脏数据都按「未命中」处理，绝不能影响校验结果：
+// 缓存不可用时照常请求 API。
+async function readReacherCache(
+  email: string,
+): Promise<ReacherCacheEntry | null> {
+  try {
+    const entry = (await reacherCacheItem.getValue())?.[email];
+    if (
+      !entry ||
+      typeof entry.reachable !== "boolean" ||
+      typeof entry.cachedAt !== "number"
+    ) {
+      return null;
+    }
+    if (Date.now() - entry.cachedAt >= REACHER_CACHE_TTL_MS) return null;
+    return entry;
+  } catch (error) {
+    console.warn("[verifyEmail] Cache read failed, fallback to API:", error);
+    return null;
+  }
+}
+
+async function writeReacherCache(
+  email: string,
+  reachable: boolean,
+): Promise<void> {
+  try {
+    const now = Date.now();
+    const cache: ReacherCacheMap = {};
+    // 顺手清掉过期项，避免缓存无限膨胀
+    for (const [key, value] of Object.entries(
+      (await reacherCacheItem.getValue()) ?? {},
+    )) {
+      if (now - value.cachedAt < REACHER_CACHE_TTL_MS) cache[key] = value;
+    }
+    cache[email] = { reachable, cachedAt: now };
+    await reacherCacheItem.setValue(cache);
+  } catch (error) {
+    console.error("[verifyEmail] Failed to persist cache:", error);
+  }
+}
+
 /**
  * Verifies an email address by checking its reachability via the Reacher API.
  * Returns `true` if the email is reachable or the API call fails (fail-open policy),
  * and `false` only when the API explicitly reports the email as "invalid".
+ *
+ * 校验结果在扩展存储里缓存 1 天，命中直接返回；只有拿到 API 的有效响应
+ * 才写缓存（失败/超时不落盘，下次仍会重试）。
  * @param email - The email address to verify
  * @returns `true` if the email is not invalid or the API call fails; `false` if the email is confirmed invalid
  */
 async function verifyEmail(email: string): Promise<boolean> {
+  const cacheKey = normalizeEmail(email) || email.trim().toLowerCase();
+
+  const cached = await readReacherCache(cacheKey);
+  if (cached) {
+    console.log(
+      `[verifyEmail] Cache hit for ${cacheKey}: ${cached.reachable ? "reachable" : "invalid"}`,
+    );
+    return cached.reachable;
+  }
+
   try {
     const response = await fetch(
       "https://api.reacher.focusapps.app/v1/check_email",
@@ -468,8 +540,18 @@ async function verifyEmail(email: string): Promise<boolean> {
         body: JSON.stringify({ to_email: email }),
       },
     );
+    // 非 2xx 视为本次请求失败：不写缓存，按 fail-open 放行
+    if (!response.ok) {
+      console.warn(
+        `[verifyEmail] API returned ${response.status} for ${cacheKey}, skip cache`,
+      );
+      return true;
+    }
     const data = (await response.json()) as { is_reachable?: string };
-    if (data.is_reachable !== "invalid") {
+    const reachable = data.is_reachable !== "invalid";
+    // API 请求成功才缓存结果
+    await writeReacherCache(cacheKey, reachable);
+    if (reachable) {
       return true;
     }
     console.warn(
