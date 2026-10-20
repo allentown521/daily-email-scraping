@@ -252,32 +252,34 @@ export async function fetchWithBrowserTab(url: string): Promise<string> {
 
     const tabId = tab.id;
     return new Promise<string>((resolve) => {
-      const timeout = setTimeout(() => {
-        browser.tabs.remove(tabId).catch(() => {});
-        resolve("");
-      }, 15000);
+      let settled = false;
+      const timeout = setTimeout(() => finish(""), 15000);
 
-      const listener = async (tid: number, changeInfo: { status?: string }) => {
-        if (tid === tabId && changeInfo.status === "complete") {
-          try {
-            const results = await browser.scripting.executeScript({
-              target: { tabId },
-              func: () => document.documentElement.outerHTML,
-            });
-            const html = (results?.[0]?.result as string) || "";
-            clearTimeout(timeout);
-            browser.tabs.onUpdated.removeListener(listener);
-            browser.tabs.remove(tabId).catch(() => {});
-            resolve(html);
-          } catch (error) {
-            console.error("Failed to get HTML:", error);
-            clearTimeout(timeout);
-            browser.tabs.onUpdated.removeListener(listener);
-            browser.tabs.remove(tabId).catch(() => {});
-            resolve("");
-          }
+      // 唯一出口：成功、异常、超时都必须移除 listener。
+      // 原实现里超时分支只删了 tab，listener 会一直挂在 service worker 上，
+      // 批量跑上千个站会累积成上千个监听器，越到后面越慢。
+      function finish(html: string) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        browser.tabs.onUpdated.removeListener(listener);
+        browser.tabs.remove(tabId).catch(() => {});
+        resolve(html);
+      }
+
+      async function listener(tid: number, changeInfo: { status?: string }) {
+        if (tid !== tabId || changeInfo.status !== "complete") return;
+        try {
+          const results = await browser.scripting.executeScript({
+            target: { tabId },
+            func: () => document.documentElement.outerHTML,
+          });
+          finish((results?.[0]?.result as string) || "");
+        } catch (error) {
+          console.error("Failed to get HTML:", error);
+          finish("");
         }
-      };
+      }
 
       browser.tabs.onUpdated.addListener(listener);
     });
@@ -345,30 +347,35 @@ async function attemptFetch(
   }
 }
 
+// 网络异常重试：最多重试 3 次，间隔分别是 1s / 2s / 3s（即最多 4 次请求）。
+// 只对「抛出异常」的失败生效（超时、DNS 失败、连接重置、TLS 中断）——
+// 这类网络层问题有概率在下一次尝试里自愈；404 之类的正常响应不会重试。
+const RETRY_DELAYS_MS = [500, 1000, 2000];
+
 async function fetchWithTimeout(
   url: string,
-  timeout = 30000,
+  timeout = 20000,
 ): Promise<FetchResult> {
-  const retryDelay = 100;
-  const maxRetries = 5;
-
-  for (let i = 0; i <= maxRetries; i++) {
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
       return await attemptFetch(url, timeout);
     } catch (error) {
-      if (i === maxRetries) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const delay = RETRY_DELAYS_MS[attempt];
+
+      // 重试次数用尽
+      if (delay === undefined) {
         console.error(
-          `Failed to fetch ${url} after ${maxRetries} retries:`,
+          `Failed to fetch ${url} after ${RETRY_DELAYS_MS.length} retries:`,
           errorMsg,
         );
         return { html: "", browserTried: false };
       }
-      const errorMsg = error instanceof Error ? error.message : String(error);
+
       console.warn(
-        `Failed to fetch ${url} (attempt ${i + 1}/${maxRetries + 1}): ${errorMsg}, retrying in ${retryDelay}ms...`,
+        `Failed to fetch ${url} (attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}): ${errorMsg}, retrying in ${delay}ms...`,
       );
-      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   return { html: "", browserTried: false };
