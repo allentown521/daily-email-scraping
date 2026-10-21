@@ -26,6 +26,7 @@ const storage = {
     },
   ),
   // Reacher 校验结果缓存：email -> { reachable, cachedAt }
+  // 注：reachable 的语义是「通过清洗规则、应入库发送」，并非单纯可达
   [StorageKey.REACHER_CACHE]: browserStorage.defineItem<ReacherCacheMap>(
     StorageKey.REACHER_CACHE,
     {

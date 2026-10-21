@@ -79,6 +79,8 @@ const TEST_DOMAINS = new Set([
   "recounts.net",
   "datatilsynet.dk",
   "duck.com",
+  "figma.com",
+  "upstash.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
@@ -463,15 +465,33 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
 
 // ---------- Reacher 校验结果缓存 ----------
 // 后台是 service worker，进程会被浏览器回收重启，所以缓存只放扩展存储：
-// email -> { reachable, cachedAt }，有效期 1 天。
+// email -> { keep, cachedAt }，有效期 1 天。keep 表示「应入库发送」。
 const REACHER_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 天
 
+// 注：字段名沿用旧缓存 "reachable"，但其语义已扩展为「通过清洗规则、应入库发送」
 export interface ReacherCacheEntry {
   reachable: boolean;
   cachedAt: number;
 }
 
 export type ReacherCacheMap = Record<string, ReacherCacheEntry>;
+
+// Reacher API 返回的校验结果（只取清洗策略用到的字段）
+interface ReacherResponse {
+  is_reachable?: string;
+  syntax?: { is_valid_syntax?: boolean };
+  mx?: { accepts_mail?: boolean };
+  smtp?: {
+    is_deliverable?: boolean;
+    is_disabled?: boolean;
+    has_full_inbox?: boolean;
+    is_catch_all?: boolean;
+  };
+  misc?: {
+    is_disposable?: boolean;
+    is_role_account?: boolean;
+  };
+}
 
 const reacherCacheItem = getStorage(StorageKey.REACHER_CACHE);
 
@@ -518,6 +538,31 @@ async function writeReacherCache(
 }
 
 /**
+ * 根据 Reacher 校验结果判断邮箱是否应入库发送。
+ * 命中「丢弃条件」任意一项即剔除；其余一律保留（包括 safe、角色公共邮箱、
+ * 全域接收邮箱）。只在拿到 API 有效响应时写缓存，缓存只加速、不影响结果。
+ * @returns keep 是否保留；reasons 命中的丢弃原因（为空表示保留）
+ */
+function evaluateEmail(data: ReacherResponse): {
+  keep: boolean;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
+  if (data.is_reachable === "invalid")
+    reasons.push(`is_reachable=${data.is_reachable}`);
+  if (data.syntax?.is_valid_syntax === false)
+    reasons.push("syntax.is_valid_syntax=false");
+  if (data.mx?.accepts_mail === false) reasons.push("mx.accepts_mail=false");
+  if (data.smtp?.is_deliverable === false)
+    reasons.push("smtp.is_deliverable=false");
+  if (data.smtp?.is_disabled === true) reasons.push("smtp.is_disabled=true");
+  if (data.smtp?.has_full_inbox === true)
+    reasons.push("smtp.has_full_inbox=true");
+  if (data.misc?.is_disposable === true) reasons.push("misc.is_disposable=true");
+  return { keep: reasons.length === 0, reasons };
+}
+
+/**
  * Verifies an email address by checking its reachability via the Reacher API.
  * Returns `true` if the email is reachable or the API call fails (fail-open policy),
  * and `false` only when the API explicitly reports the email as "invalid".
@@ -533,7 +578,7 @@ async function verifyEmail(email: string): Promise<boolean> {
   const cached = await readReacherCache(cacheKey);
   if (cached) {
     console.log(
-      `[verifyEmail] Cache hit for ${cacheKey}: ${cached.reachable ? "reachable" : "invalid"}`,
+      `[verifyEmail] Cache hit for ${cacheKey}: ${cached.reachable ? "keep" : "drop"}`,
     );
     return cached.reachable;
   }
@@ -554,15 +599,15 @@ async function verifyEmail(email: string): Promise<boolean> {
       );
       return true;
     }
-    const data = (await response.json()) as { is_reachable?: string };
-    const reachable = data.is_reachable !== "invalid";
-    // API 请求成功才缓存结果
-    await writeReacherCache(cacheKey, reachable);
-    if (reachable) {
+    const data = (await response.json()) as ReacherResponse;
+    // API 请求成功才缓存结果（reachable 字段即「通过清洗、应发送」）
+    const { keep, reasons } = evaluateEmail(data);
+    await writeReacherCache(cacheKey, keep);
+    if (keep) {
       return true;
     }
     console.warn(
-      `[verifyEmail] Email is invalid, skipped: ${email} reason: ${data.is_reachable}`,
+      `[verifyEmail] Email dropped, skipped: ${email} | 原因: ${reasons.join(", ")}`,
     );
     return false;
   } catch (error) {
