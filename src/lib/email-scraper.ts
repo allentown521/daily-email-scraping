@@ -81,6 +81,7 @@ const TEST_DOMAINS = new Set([
   "duck.com",
   "figma.com",
   "upstash.com",
+  "mintlify.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
@@ -386,6 +387,36 @@ async function fetchWithTimeout(
 function normalizeEmail(email: string): string {
   let normalized = email.toLowerCase().trim();
 
+  // 解码脏字符：JS/JSON 的 \uXXXX 转义（\u003e => >）与 HTML 实体（&gt; / &#62; / &#x3e; 等），
+  // 否则它们会作为前缀混进邮箱（如 \u003esupport@x.com）。解码后交给下方首尾去特殊字符规则剥掉。
+  normalized = normalized
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) =>
+      String.fromCharCode(Number.parseInt(h, 16)),
+    )
+    .replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos);/gi, (entity) => {
+      const named: Record<string, string> = {
+        "&amp;": "&",
+        "&lt;": "<",
+        "&gt;": ">",
+        "&quot;": '"',
+        "&apos;": "'",
+      };
+      const lower = entity.toLowerCase();
+      if (named[lower]) return named[lower];
+      const num = /^&#(x?)([0-9a-fA-F]+);$/.exec(lower);
+      if (num) {
+        const code = Number.parseInt(num[2] ?? "", num[1] ? 16 : 10);
+        return Number.isFinite(code) && code > 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : entity;
+      }
+      return entity;
+    })
+    // URL 编码的 @（mailto 链接常被写成 support%40x.com），还原成 @ 以免漏抓
+    .replace(/%40/gi, "@")
+    // 部分站点把 ">" 转义成裸 u003e（无反斜杠）粘在邮箱前，如 u003esupport@x.com
+    .replace(/^(?:u003e)+/i, "");
+
   // Remove trailing/leading special characters
   normalized = normalized.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "");
 
@@ -465,7 +496,8 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
 
 // ---------- Reacher 校验结果缓存 ----------
 // 后台是 service worker，进程会被浏览器回收重启，所以缓存只放扩展存储：
-// email -> { keep, cachedAt }，有效期 1 天。keep 表示「应入库发送」。
+// email -> { reachable, cachedAt }，有效期 1 天。
+// 注：字段名沿用旧缓存 "reachable"，其语义是「通过清洗规则、应入库发送」。
 const REACHER_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 天
 
 // 注：字段名沿用旧缓存 "reachable"，但其语义已扩展为「通过清洗规则、应入库发送」
@@ -558,7 +590,8 @@ function evaluateEmail(data: ReacherResponse): {
   if (data.smtp?.is_disabled === true) reasons.push("smtp.is_disabled=true");
   if (data.smtp?.has_full_inbox === true)
     reasons.push("smtp.has_full_inbox=true");
-  if (data.misc?.is_disposable === true) reasons.push("misc.is_disposable=true");
+  if (data.misc?.is_disposable === true)
+    reasons.push("misc.is_disposable=true");
   return { keep: reasons.length === 0, reasons };
 }
 

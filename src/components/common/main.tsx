@@ -101,7 +101,8 @@ export const Main = ({ className, filename }: MainProps) => {
     }
 
     try {
-      // 后台 service worker 通过 watch 监听这个 key，删除后内存缓存会同步失效
+      // verifyEmail 每次都从扩展存储读取缓存，删除该 key 后下一次读取即为 miss，
+      // 从而在下次抓取时重新请求 Reacher API 校验。
       await getStorage(StorageKey.REACHER_CACHE).removeValue();
       toast.success("Reacher cache cleared");
     } catch (error) {
