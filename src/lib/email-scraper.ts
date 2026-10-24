@@ -99,6 +99,9 @@ const EMAIL_PREFIX_BLOCKLIST = new Set([
   "postmaster",
   "abuse",
   "webmaster",
+  "billing",
+  "invoice",
+  "finance",
 ]);
 
 const INCLUDE_TEST_DOMAINS = new Set([
@@ -592,8 +595,7 @@ function evaluateEmail(data: ReacherResponse): {
   if (data.smtp?.has_full_inbox === true)
     reasons.push("smtp.has_full_inbox=true");
   // 全域接收：不能确认真实收件人，视为无效
-  if (data.smtp?.is_catch_all === true)
-    reasons.push("smtp.is_catch_all=true");
+  if (data.smtp?.is_catch_all === true) reasons.push("smtp.is_catch_all=true");
   if (data.misc?.is_disposable === true)
     reasons.push("misc.is_disposable=true");
   return { keep: reasons.length === 0, reasons };
