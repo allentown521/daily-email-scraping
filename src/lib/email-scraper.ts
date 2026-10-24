@@ -571,8 +571,9 @@ async function writeReacherCache(
 
 /**
  * 根据 Reacher 校验结果判断邮箱是否应入库发送。
- * 命中「丢弃条件」任意一项即剔除；其余一律保留（包括 safe、角色公共邮箱、
- * 全域接收邮箱）。只在拿到 API 有效响应时写缓存，缓存只加速、不影响结果。
+ * 命中「丢弃条件」任意一项即剔除；其余一律保留（包括 safe、角色公共邮箱）。
+ * catch-all（全域接收）属于无法确认真实收件人，按无效处理、不入库。
+ * 只在拿到 API 有效响应时写缓存，缓存只加速、不影响结果。
  * @returns keep 是否保留；reasons 命中的丢弃原因（为空表示保留）
  */
 function evaluateEmail(data: ReacherResponse): {
@@ -590,6 +591,9 @@ function evaluateEmail(data: ReacherResponse): {
   if (data.smtp?.is_disabled === true) reasons.push("smtp.is_disabled=true");
   if (data.smtp?.has_full_inbox === true)
     reasons.push("smtp.has_full_inbox=true");
+  // 全域接收：不能确认真实收件人，视为无效
+  if (data.smtp?.is_catch_all === true)
+    reasons.push("smtp.is_catch_all=true");
   if (data.misc?.is_disposable === true)
     reasons.push("misc.is_disposable=true");
   return { keep: reasons.length === 0, reasons };
