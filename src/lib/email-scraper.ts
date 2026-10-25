@@ -82,6 +82,7 @@ const TEST_DOMAINS = new Set([
   "figma.com",
   "upstash.com",
   "mintlify.com",
+  "prisma.io",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
@@ -102,6 +103,7 @@ const EMAIL_PREFIX_BLOCKLIST = new Set([
   "billing",
   "invoice",
   "finance",
+  "compliance",
 ]);
 
 const INCLUDE_TEST_DOMAINS = new Set([
