@@ -104,6 +104,8 @@ const EMAIL_PREFIX_BLOCKLIST = new Set([
   "invoice",
   "finance",
   "compliance",
+  "refunds",
+  "purchasing",
 ]);
 
 const INCLUDE_TEST_DOMAINS = new Set([
