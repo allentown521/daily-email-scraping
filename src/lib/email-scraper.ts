@@ -597,8 +597,8 @@ function evaluateEmail(data: ReacherResponse): {
   if (data.syntax?.is_valid_syntax === false)
     reasons.push("syntax.is_valid_syntax=false");
   if (data.mx?.accepts_mail === false) reasons.push("mx.accepts_mail=false");
-  if (data.smtp?.is_deliverable === false)
-    reasons.push("smtp.is_deliverable=false");
+  /*   if (data.smtp?.is_deliverable === false)
+    reasons.push("smtp.is_deliverable=false"); */
   if (data.smtp?.is_disabled === true) reasons.push("smtp.is_disabled=true");
   if (data.smtp?.has_full_inbox === true)
     reasons.push("smtp.has_full_inbox=true");
