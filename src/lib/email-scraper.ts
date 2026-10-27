@@ -83,6 +83,7 @@ const TEST_DOMAINS = new Set([
   "upstash.com",
   "mintlify.com",
   "prisma.io",
+  "bitwarden.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
@@ -503,13 +504,14 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
 
 // ---------- Reacher 校验结果缓存 ----------
 // 后台是 service worker，进程会被浏览器回收重启，所以缓存只放扩展存储：
-// email -> { reachable, cachedAt }，有效期 1 天。
+// email -> { reachable, reasons, cachedAt }，有效期 1 天。
 // 注：字段名沿用旧缓存 "reachable"，其语义是「通过清洗规则、应入库发送」。
 const REACHER_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 天
 
-// 注：字段名沿用旧缓存 "reachable"，但其语义已扩展为「通过清洗规则、应入库发送」
 export interface ReacherCacheEntry {
   reachable: boolean;
+  // 命中的丢弃原因，保留时为空数组
+  reasons: string[];
   cachedAt: number;
 }
 
@@ -544,7 +546,8 @@ async function readReacherCache(
     if (
       !entry ||
       typeof entry.reachable !== "boolean" ||
-      typeof entry.cachedAt !== "number"
+      typeof entry.cachedAt !== "number" ||
+      !Array.isArray(entry.reasons)
     ) {
       return null;
     }
@@ -559,6 +562,7 @@ async function readReacherCache(
 async function writeReacherCache(
   email: string,
   reachable: boolean,
+  reasons: string[],
 ): Promise<void> {
   try {
     const now = Date.now();
@@ -569,7 +573,7 @@ async function writeReacherCache(
     )) {
       if (now - value.cachedAt < REACHER_CACHE_TTL_MS) cache[key] = value;
     }
-    cache[email] = { reachable, cachedAt: now };
+    cache[email] = { reachable, reasons, cachedAt: now };
     await reacherCacheItem.setValue(cache);
   } catch (error) {
     console.error("[verifyEmail] Failed to persist cache:", error);
@@ -620,9 +624,16 @@ async function verifyEmail(email: string): Promise<boolean> {
 
   const cached = await readReacherCache(cacheKey);
   if (cached) {
-    console.log(
-      `[verifyEmail] Cache hit for ${cacheKey}: ${cached.reachable ? "keep" : "drop"}`,
-    );
+    const reasonText =
+      cached.reasons.length > 0
+        ? cached.reasons.join(", ")
+        : "无（未命中丢弃规则）";
+    const message = `[verifyEmail] Cache hit for ${cacheKey}: ${cached.reachable ? "keep" : "drop"} | 原因: ${reasonText}`;
+    if (cached.reachable) {
+      console.log(message);
+    } else {
+      console.warn(message);
+    }
     return cached.reachable;
   }
 
@@ -645,7 +656,7 @@ async function verifyEmail(email: string): Promise<boolean> {
     const data = (await response.json()) as ReacherResponse;
     // API 请求成功才缓存结果（reachable 字段即「通过清洗、应发送」）
     const { keep, reasons } = evaluateEmail(data);
-    await writeReacherCache(cacheKey, keep);
+    await writeReacherCache(cacheKey, keep, reasons);
     if (keep) {
       return true;
     }

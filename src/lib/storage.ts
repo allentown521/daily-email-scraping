@@ -25,8 +25,9 @@ const storage = {
       fallback: [],
     },
   ),
-  // Reacher 校验结果缓存：email -> { reachable, cachedAt }
-  // 注：reachable 的语义是「通过清洗规则、应入库发送」，并非单纯可达
+  // Reacher 校验结果缓存：email -> { reachable, reasons, cachedAt }
+  // 注：reachable 的语义是「通过清洗规则、应入库发送」，并非单纯可达；
+  // reasons 记录命中的丢弃原因，便于缓存命中时复盘
   [StorageKey.REACHER_CACHE]: browserStorage.defineItem<ReacherCacheMap>(
     StorageKey.REACHER_CACHE,
     {
