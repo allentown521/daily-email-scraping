@@ -505,6 +505,7 @@ export { extractEmailsFromText, normalizeEmail, validateEmail };
 // ---------- Reacher 校验结果缓存 ----------
 // 后台是 service worker，进程会被浏览器回收重启，所以缓存只放扩展存储：
 // email -> { reachable, reasons, cachedAt }，有效期 1 天。
+// 只缓存「通过校验」的邮箱：校验不通过的不入缓存，下次遇到会重新请求 API。
 // 注：字段名沿用旧缓存 "reachable"，其语义是「通过清洗规则、应入库发送」。
 const REACHER_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 天
 
@@ -614,8 +615,8 @@ function evaluateEmail(data: ReacherResponse): {
  * Returns `true` if the email is reachable or the API call fails (fail-open policy),
  * and `false` only when the API explicitly reports the email as "invalid".
  *
- * 校验结果在扩展存储里缓存 1 天，命中直接返回；只有拿到 API 的有效响应
- * 才写缓存（失败/超时不落盘，下次仍会重试）。
+ * 只把「通过校验」的邮箱写入缓存（有效期 1 天）；校验不通过的不缓存，
+ * 下次遇到会重新请求 API。API 失败/超时同样不落盘（fail-open）。
  * @param email - The email address to verify
  * @returns `true` if the email is not invalid or the API call fails; `false` if the email is confirmed invalid
  */
@@ -654,14 +655,14 @@ async function verifyEmail(email: string): Promise<boolean> {
       return true;
     }
     const data = (await response.json()) as ReacherResponse;
-    // API 请求成功才缓存结果（reachable 字段即「通过清洗、应发送」）
     const { keep, reasons } = evaluateEmail(data);
-    await writeReacherCache(cacheKey, keep, reasons);
     if (keep) {
+      // 只缓存通过校验的邮箱
+      await writeReacherCache(cacheKey, true, reasons);
       return true;
     }
     console.warn(
-      `[verifyEmail] Email dropped, skipped: ${email} | 原因: ${reasons.join(", ")}`,
+      `[verifyEmail] Email dropped, not cached: ${email} | 原因: ${reasons.join(", ")}`,
     );
     return false;
   } catch (error) {
