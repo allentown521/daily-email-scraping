@@ -84,6 +84,7 @@ const TEST_DOMAINS = new Set([
   "mintlify.com",
   "prisma.io",
   "bitwarden.com",
+  "netcup.com",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
