@@ -699,8 +699,8 @@ function evaluateEmail(data: ReacherResponse): {
   if (data.syntax?.is_valid_syntax === false)
     reasons.push("syntax.is_valid_syntax=false");
   if (data.mx?.accepts_mail === false) reasons.push("mx.accepts_mail=false");
-  /*   if (data.smtp?.is_deliverable === false)
-    reasons.push("smtp.is_deliverable=false"); */
+  if (data.smtp?.is_deliverable === false)
+    reasons.push("smtp.is_deliverable=false");
   if (data.smtp?.is_disabled === true) reasons.push("smtp.is_disabled=true");
   if (data.smtp?.has_full_inbox === true)
     reasons.push("smtp.has_full_inbox=true");
@@ -1639,9 +1639,7 @@ async function scrapeLevel1(
   return { emails, candidates, name };
 }
 
-async function scrapeLevel2and3(
-  candidates: string[],
-): Promise<string[]> {
+async function scrapeLevel2and3(candidates: string[]): Promise<string[]> {
   const allEmails = new Set<string>();
 
   // 抓取全部候选页。不再"命中一个就停"——不同页面常有不同联系人的邮箱，
