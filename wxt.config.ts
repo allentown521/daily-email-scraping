@@ -10,6 +10,8 @@ export default defineConfig({
     host_permissions: ["<all_urls>"],
     permissions: [
       "storage",
+      // 网页抓取结果按 URL 单键缓存，量较大（5k 请求/天），放开配额避免静默写爆
+      "unlimitedStorage",
       "sidePanel",
       "tabs",
       "alarms",

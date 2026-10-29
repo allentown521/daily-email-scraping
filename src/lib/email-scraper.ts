@@ -317,6 +317,8 @@ interface FetchResult {
   html: string;
   // 是否已尝试过浏览器渲染兜底（无论成败），用于避免上层重复开 tab
   browserTried: boolean;
+  // 底层 HTTP 状态码（网络异常时为 0），用于决定是否写入页面缓存
+  status: number;
 }
 
 async function attemptFetch(
@@ -339,7 +341,7 @@ async function attemptFetch(
     // 资源不存在：浏览器渲染同样拿不到内容，直接放弃，省去一次 tab 开销。
     // （失效的候选链接很常见，否则每个都要白等一次浏览器渲染）
     if (response.status === 404 || response.status === 410) {
-      return { html: "", browserTried: false };
+      return { html: "", browserTried: false, status: response.status };
     }
 
     // 其余状态码不拦截（304 的 body 为空、403/429 反爬常返回错误页），
@@ -347,12 +349,13 @@ async function attemptFetch(
     const html = await response.text();
     if (isSkeleton(html)) {
       const browserHtml = await fetchWithBrowserTab(url);
-      if (browserHtml) return { html: browserHtml, browserTried: true };
+      if (browserHtml)
+        return { html: browserHtml, browserTried: true, status: 200 };
       // tab 也拿不到内容：标记已尝试过，避免上层重复开 tab；
       // 保留原骨架 html——SPA 的骨架里可能仍有可提取的导航链接
-      return { html, browserTried: true };
+      return { html, browserTried: true, status: 200 };
     }
-    return { html, browserTried: false };
+    return { html, browserTried: false, status: 200 };
   } catch (error) {
     clearTimeout(id);
     throw error;
@@ -381,7 +384,7 @@ async function fetchWithTimeout(
           `Failed to fetch ${url} after ${RETRY_DELAYS_MS.length} retries:`,
           errorMsg,
         );
-        return { html: "", browserTried: false };
+        return { html: "", browserTried: false, status: 0 };
       }
 
       console.warn(
@@ -390,7 +393,7 @@ async function fetchWithTimeout(
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
-  return { html: "", browserTried: false };
+  return { html: "", browserTried: false, status: 0 };
 }
 
 function normalizeEmail(email: string): string {
@@ -579,6 +582,103 @@ async function writeReacherCache(
     await reacherCacheItem.setValue(cache);
   } catch (error) {
     console.error("[verifyEmail] Failed to persist cache:", error);
+  }
+}
+
+// ---------- 网页抓取结果缓存（按 URL 单键，存「解析结果」而非原始 HTML）----------
+// 后台是 service worker，进程会被浏览器回收重启，所以缓存只放扩展存储。
+// 每个 URL 一个独立 key（local:page_cache_v1:<归一化URL>），好处：
+//   1) O(单条) 读写，不像单 key 大 JSON 那样每次都反序列化全量；
+//   2) 存的是「解析结果」{ emails, candidates, name, browserTried, status, cachedAt }，
+//      体积只有几百字节（原始 HTML 常达上百 KB），5k 请求/天 × 3 天也才几 MB，
+//      在 10MB 的 storage.local 配额内稳稳放下。
+// 只缓存 HTTP 200 的成功抓取（无论是否匹配到邮箱）；请求失败的 URL 不入库，
+// 下次重跑会重新请求。读/写任何异常都按「未命中/跳过」处理，绝不影响抓取正确性。
+const PAGE_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 天
+const PAGE_CACHE_PREFIX = "local:page_cache_v1:";
+
+export interface PageCacheEntry {
+  // 该 URL 上直接提取到的邮箱（含 mailto/text）
+  emails: string[];
+  // 仅首页：从该页发现的候选链接（contact/about/team…），用于跳过重新解析 HTML
+  candidates: string[];
+  // 该页解析出的产品/站点名（首页才有意义）
+  name: string;
+  // 是否已尝试过浏览器渲染兜底，避免缓存命中后重复开 tab
+  browserTried: boolean;
+  status: number;
+  cachedAt: number;
+}
+
+// 把 URL 归一化成一个稳定的缓存键：小写 scheme+host、去尾部斜杠、去 fragment。
+// 让「同一页面」在多次运行的抓取里命中同一条缓存。
+function normalizeUrlKey(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase();
+    let path = u.pathname;
+    if (path.length > 1) path = path.replace(/\/+$/, "");
+    return `${u.protocol.toLowerCase()}//${host}${path}${u.search}`;
+  } catch {
+    return rawUrl.trim().toLowerCase();
+  }
+}
+
+function pageCacheStorageKey(url: string): string {
+  return PAGE_CACHE_PREFIX + normalizeUrlKey(url);
+}
+
+// 读缓存只做加速：任何异常/脏数据/过期都按「未命中」处理，回落到真实请求。
+async function readPageCache(url: string): Promise<PageCacheEntry | null> {
+  try {
+    const { browser } = await import("wxt/browser");
+    const key = pageCacheStorageKey(url);
+    const result = await browser.storage.local.get(key);
+    const entry = (result as Record<string, PageCacheEntry>)[key];
+    if (
+      !entry ||
+      !Array.isArray(entry.emails) ||
+      !Array.isArray(entry.candidates) ||
+      typeof entry.cachedAt !== "number"
+    ) {
+      return null;
+    }
+    if (Date.now() - entry.cachedAt >= PAGE_CACHE_TTL_MS) return null;
+    return entry;
+  } catch (error) {
+    console.warn("[pageCache] Read failed, fallback to fetch:", error);
+    return null;
+  }
+}
+
+// 只缓存 HTTP 200 的成功抓取；非 200 / 异常都不落盘，下次重跑会重新请求。
+async function writePageCache(
+  url: string,
+  data: Omit<PageCacheEntry, "cachedAt">,
+): Promise<void> {
+  if (data.status !== 200) return;
+  try {
+    const { browser } = await import("wxt/browser");
+    const key = pageCacheStorageKey(url);
+    const entry: PageCacheEntry = { ...data, cachedAt: Date.now() };
+    await browser.storage.local.set({ [key]: entry });
+  } catch (error) {
+    // 配额超限等写入失败不应影响抓取，仅记录
+    console.error("[pageCache] Failed to persist cache:", error);
+  }
+}
+
+// 清空全部页面缓存：按前缀批量删除（供 UI 的 Clear Page Cache 按钮调用）。
+export async function clearPageCache(): Promise<void> {
+  try {
+    const { browser } = await import("wxt/browser");
+    const all = await browser.storage.local.get();
+    const keys = Object.keys(all).filter((k) =>
+      k.startsWith(PAGE_CACHE_PREFIX),
+    );
+    if (keys.length > 0) await browser.storage.local.remove(keys);
+  } catch (error) {
+    console.error("[pageCache] Failed to clear cache:", error);
   }
 }
 
@@ -1487,13 +1587,26 @@ export function extractProductName(html: string, url: string): string {
 
 async function scrapeLevel1(
   url: string,
-): Promise<{ emails: string[]; html: string }> {
-  const { html, browserTried } = await fetchWithTimeout(url);
-  if (!html) {
-    return { emails: [], html: "" };
+): Promise<{ emails: string[]; candidates: string[]; name: string }> {
+  // 缓存命中：直接返回已解析结果（emails / 候选链接 / 站点名），跳过 fetch 与解析
+  const cached = await readPageCache(url);
+  if (cached) {
+    console.log(`[pageCache] hit ${pageCacheStorageKey(url)}`);
+    return {
+      emails: cached.emails,
+      candidates: cached.candidates,
+      name: cached.name,
+    };
   }
 
-  const emails = extractEmailsFromText(html);
+  const { html, browserTried } = await fetchWithTimeout(url);
+  if (!html) {
+    return { emails: [], candidates: [], name: "" };
+  }
+
+  let emails = extractEmailsFromText(html);
+  let finalHtml = html;
+  let finalBrowserTried = browserTried;
 
   // fetch 拿到的是未执行 JS 的静态 HTML。Next.js/SPA 站的邮箱常在
   // hydration 之后才插入 DOM，静态源码里搜不到。0 邮箱且尚未做过
@@ -1501,39 +1614,58 @@ async function scrapeLevel1(
   if (emails.length === 0 && !browserTried) {
     const renderedHtml = await fetchWithBrowserTab(url);
     if (renderedHtml) {
+      finalHtml = renderedHtml;
+      finalBrowserTried = true;
       const renderedEmails = extractEmailsFromText(renderedHtml);
       if (renderedEmails.length > 0) {
-        // 渲染后的 DOM 导航链接更全，后续用它找候选页
-        return { emails: renderedEmails, html: renderedHtml };
+        emails = renderedEmails;
       }
     }
   }
 
-  return { emails, html };
+  // 用最终拿到的 HTML（含渲染兜底）找候选页；缓存命中后无需再解析 HTML
+  const candidates = findCandidateLinks(finalHtml, url).map((c) => c.url);
+  const name = extractProductName(finalHtml, url);
+
+  // 只缓存成功的抓取；无论是否匹配到邮箱都缓存（满足「200 即缓存」）
+  await writePageCache(url, {
+    emails,
+    candidates,
+    name,
+    browserTried: finalBrowserTried,
+    status: 200,
+  });
+
+  return { emails, candidates, name };
 }
 
 async function scrapeLevel2and3(
-  baseUrl: string,
-  html: string,
+  candidates: string[],
 ): Promise<string[]> {
-  if (!html) {
-    return [];
-  }
-
-  const candidates = findCandidateLinks(html, baseUrl);
-  if (candidates.length === 0) {
-    return [];
-  }
-
   const allEmails = new Set<string>();
 
   // 抓取全部候选页。不再"命中一个就停"——不同页面常有不同联系人的邮箱，
   // 提前 break 会漏掉 team 页、about 页上的个人邮箱。
-  for (const candidate of candidates) {
-    const { html: candidateHtml } = await fetchWithTimeout(candidate.url);
-    const emails = extractEmailsFromText(candidateHtml);
+  for (const candidateUrl of candidates) {
+    // 缓存命中：直接取已解析的邮箱，跳过 fetch 与解析
+    const cached = await readPageCache(candidateUrl);
+    if (cached) {
+      for (const email of cached.emails) allEmails.add(email);
+      continue;
+    }
+
+    const { html } = await fetchWithTimeout(candidateUrl);
+    const emails = extractEmailsFromText(html);
+    // 候选页只贡献邮箱、不再向下钻取（避免无限递归）；同样只缓存成功抓取
+    await writePageCache(candidateUrl, {
+      emails,
+      candidates: [],
+      name: "",
+      browserTried: false,
+      status: 200,
+    });
     for (const email of emails) {
-      console.log(`[Level ${candidate.type}] Found email: ${email}`);
+      console.log(`[Level candidate] Found email: ${email}`);
       allEmails.add(email);
     }
   }
@@ -1547,14 +1679,12 @@ export async function scrapeEmails(url: string): Promise<ScrapedEmail[]> {
 
   try {
     // Level 1: Direct page fetch (with automatic fallback to background tab)
-    const { emails: level1Emails, html } = await scrapeLevel1(url);
-    // 整站共用一个产品名：首页（含浏览器渲染兜底后的 DOM）的 head 最完整
-    const name = extractProductName(html, url);
+    const { emails: level1Emails, candidates, name } = await scrapeLevel1(url);
 
     // Level 2 & 3: 联系/关于/团队等候选页。
     // 即便首页已抓到邮箱也照样抓候选页并合并——首页常见的是 info@ 这类
     // 角色邮箱，真正的联系人邮箱往往在 contact/team/about 页上。
-    const level23Emails = await scrapeLevel2and3(url, html);
+    const level23Emails = await scrapeLevel2and3(candidates);
 
     // 合并去重（首页邮箱优先，标记为 mailto；其余标记为 contact-page）
     const seen = new Set<string>();

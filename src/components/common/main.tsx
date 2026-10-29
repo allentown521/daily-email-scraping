@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { browser } from "wxt/browser";
 import { useCollectedEmails } from "~/hooks/useCollectedEmails";
 import { StorageKey, getStorage } from "~/lib/storage";
+import { clearPageCache } from "~/lib/email-scraper";
 import {
   checkIsInTrial,
   cn,
@@ -108,6 +109,26 @@ export const Main = ({ className, filename }: MainProps) => {
     } catch (error) {
       console.error("Failed to clear Reacher cache:", error);
       toast.error("Failed to clear Reacher cache");
+    }
+  };
+
+  const clearPageCache = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to clear the web page fetch cache? Already-fetched pages will be re-downloaded on the next scraping run.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // 页面缓存按 URL 单键存储，clearPageCache 会按前缀批量删除。
+      // 删除后下次抓取即为 miss，重新请求网页。
+      await clearPageCache();
+      toast.success("Page cache cleared");
+    } catch (error) {
+      console.error("Failed to clear page cache:", error);
+      toast.error("Failed to clear page cache");
     }
   };
 
@@ -907,6 +928,15 @@ export const Main = ({ className, filename }: MainProps) => {
               className="flex w-full items-center justify-center gap-2 text-sm"
             >
               🧹 Clear Reacher Cache
+            </Button>
+
+            {/* 网页抓取结果缓存（有效期 3 天） */}
+            <Button
+              onClick={clearPageCache}
+              variant="outline"
+              className="flex w-full items-center justify-center gap-2 text-sm"
+            >
+              🧹 Clear Page Cache
             </Button>
           </CardContent>
         </Card>
