@@ -711,6 +711,59 @@ function evaluateEmail(data: ReacherResponse): {
   return { keep: reasons.length === 0, reasons };
 }
 
+// ---------- 验证节流（仅作用于真实的 Reacher API 请求）----------
+// 两次真实请求之间加延时：跨域名 0.5~1s 随机，同域名（被验证邮箱的域名）3~5s 随机，
+// 带抖动。缓存命中（未打 API）不加延时，否则重跑会无谓变慢。
+let lastVerifyDomain: string | null = null;
+let lastVerifyRequestAt = 0;
+
+// 轻量互斥锁：串行化「读状态→sleep→写状态」，避免多个产品并行抓取时
+// 并发的 verifyEmail 竞争共享的 lastVerify* 状态，导致同域名间隔失效。
+let throttleLocked = false;
+const throttleWaiters: (() => void)[] = [];
+
+async function withThrottleLock<T>(fn: () => Promise<T>): Promise<T> {
+  while (throttleLocked) {
+    await new Promise<void>((resolve) => throttleWaiters.push(resolve));
+  }
+  throttleLocked = true;
+  try {
+    return await fn();
+  } finally {
+    throttleLocked = false;
+    const next = throttleWaiters.shift();
+    if (next) next();
+  }
+}
+
+// 取被验证邮箱的域名（@ 之后部分），用于「同域名」判定
+function getEmailDomainForThrottle(email: string): string {
+  const at = email.lastIndexOf("@");
+  return at >= 0 ? email.slice(at + 1).trim().toLowerCase() : "";
+}
+
+function randomIntInRange(min: number, max: number): number {
+  return Math.floor(min + Math.random() * (max - min));
+}
+
+// 在真正发起 Reacher 请求前调用：按与上次请求的域名关系计算并等待间隔
+async function applyVerifyThrottle(email: string): Promise<void> {
+  await withThrottleLock(async () => {
+    const domain = getEmailDomainForThrottle(email);
+    const gapMs =
+      lastVerifyDomain !== null && domain !== "" && domain === lastVerifyDomain
+        ? randomIntInRange(3000, 5000) // 同域名：3~5s
+        : randomIntInRange(500, 1000); // 跨域名：0.5~1s
+    const elapsed = Date.now() - lastVerifyRequestAt;
+    const wait = Math.max(0, gapMs - elapsed);
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    lastVerifyDomain = domain;
+    lastVerifyRequestAt = Date.now();
+  });
+}
+
 /**
  * Verifies an email address by checking its reachability via the Reacher API.
  * Returns `true` if the email is reachable or the API call fails (fail-open policy),
@@ -738,6 +791,9 @@ async function verifyEmail(email: string): Promise<boolean> {
     }
     return cached.reachable;
   }
+
+  // 缓存未命中：真正要打 Reacher API，先按域名节流（同域名 3~5s，跨域名 0.5~1s）
+  await applyVerifyThrottle(email);
 
   try {
     const response = await fetch(
@@ -772,48 +828,6 @@ async function verifyEmail(email: string): Promise<boolean> {
     return true;
   }
 
-  const normalized = normalizeEmail(email);
-  const domain = normalized.split("@")[1]?.toLowerCase();
-  if (!domain) return false;
-  try {
-    // 💡 骚操作：同时并发查询 A 记录（网站）和 MX 记录（邮件）
-    const [resA, resMX] = await Promise.all([
-      fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=A`, {
-        headers: { Accept: "application/dns-json" },
-      }),
-      fetch(`https://cloudflare-dns.com/dns-query?name=${domain}&type=MX`, {
-        headers: { Accept: "application/dns-json" },
-      }),
-    ]);
-
-    if (!resA.ok && !resMX.ok) {
-      // 如果 CF 接口偶尔挂了，使用 HEAD 方法，只连服务器探路，不下载任何网页内容，速度飞快
-      // mode: 'no-cors' 是核心，防止被对方网站的跨域策略（CORS）拦截
-      await fetch(`https://${domain}`, {
-        method: "HEAD",
-        mode: "no-cors",
-        cache: "no-cache",
-      });
-      return true;
-    }
-
-    const dataA = await resA.json();
-    const dataMX = await resMX.json();
-
-    // 4. 审判：只有 Status 是 0 且真的有 Answer 解析结果，才算活域名
-    if (
-      (dataA.Status === 0 && dataA.Answer && dataA.Answer.length > 0) ||
-      (dataMX.Status === 0 && dataMX.Answer && dataMX.Answer.length > 0)
-    ) {
-      return true; // 捞回像 seadance-video.com 这种有网站但没 MX 记录的精准大鱼！
-    }
-    console.log(`[dns 不存在] ${domain} 无法解析或建立连接`);
-    return false;
-  } catch (err) {
-    // 连 HTTPS 都连不上，说明域名彻底挂了、或者根本不存在（如 testttttt.com）
-    console.log(`[官网无法连接] ${domain} 无法解析或建立连接`, err);
-    return false;
-  }
 }
 
 function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
