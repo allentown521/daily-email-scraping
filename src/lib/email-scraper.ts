@@ -530,12 +530,8 @@ interface ReacherResponse {
   syntax?: { is_valid_syntax?: boolean };
   mx?: {
     accepts_mail?: boolean;
-    // Reacher 返回的 MX 记录列表，每条含 exchange/priority 等，便于排查投递域
-    records?: Array<{
-      exchange?: string;
-      priority?: number;
-      [key: string]: unknown;
-    }>;
+    // Reacher 返回的 MX 记录列表（字符串数组，每条即一条 MX 主机名），便于排查投递域
+    records?: string[];
   };
   smtp?: {
     is_deliverable?: boolean;
@@ -789,6 +785,7 @@ const QEV_API_KEYS: string[] = [
   "9063c5e25333d9cd87b466fc9988e872891e0b7207c01d56ea6319e8c78b", //product@focusapps.app
   "116decbc0af57f0c874a1c04825bfa810ad910938f58e4a2d0f032a0cf86", //product@saashunt.best
   "a0467a9576161005af3646bc7049b6fc3cad02b6319e362f34c4992f7b8e", //product@devhub.best
+  "21b5f6a100c62e74064c1e3bded81117b6b6538b1f36b0e59a8f37c141f2", //product@tinyhunt.dev
 ];
 let qevKeyIndex = 0;
 function nextQevKey(): string {
@@ -888,9 +885,7 @@ async function verifyEmail(email: string): Promise<boolean> {
     const { keep, reasons } = evaluateEmail(data);
     // 与检查结果一并打印首条 MX 记录，便于排查投递域/邮件服务商
     const firstMx = data.mx?.records?.[0];
-    const mxInfo = firstMx
-      ? JSON.stringify(firstMx)
-      : "无（mx 未返回 records）";
+    const mxInfo = firstMx ?? "无（mx 未返回 records）";
     console.log(
       `[verifyEmail] ${cacheKey}: ${keep ? "keep" : "drop"} | 原因: ${reasons.join(", ") || "无"} | 首条MX: ${mxInfo}`,
     );
@@ -900,7 +895,26 @@ async function verifyEmail(email: string): Promise<boolean> {
       return true;
     }
 
-    // Reacher 判无效 → 用 QuickEmailVerification 二次校验兜底
+    // Reacher 判无效：仅当邮箱属于 Outlook / Office 365 域时才用 QEV 兜底复核，
+    // 其余域名直接判无效，不浪费 QEV 每日免费额度（Reacher 对这两类误判较多）。
+    const mxDomain = firstMx ?? "";
+    const rcptDomain = getEmailDomainForThrottle(email); // 被验证邮箱的域名
+    const isOutlook365 =
+      mxDomain.endsWith(".mail.protection.outlook.com") ||
+      mxDomain.endsWith(".mail.protection.outlook.com.") ||
+      mxDomain.endsWith(".mx.microsoft") ||
+      mxDomain.endsWith(".mx.microsoft.") ||
+      rcptDomain.startsWith("outlook.") ||
+      rcptDomain.startsWith("hotmail.") ||
+      rcptDomain.startsWith("live.") ||
+      rcptDomain.startsWith("msn.");
+    if (!isOutlook365) {
+      console.log(
+        `[qev] ${cacheKey}: 非 Outlook/Office365 域（mx=${mxDomain || "无"}，rcpt=${rcptDomain || "无"}），跳过 QEV 复核，维持 Reacher 判定(invalid)`,
+      );
+      return false;
+    }
+
     const qev = await verifyWithQEV(email);
     if (qev) {
       // QEV 返回 200 → 其结果即最终结论：无论 true/false 都缓存，不再回退到 Reacher
