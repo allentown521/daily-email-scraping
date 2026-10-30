@@ -531,7 +531,11 @@ interface ReacherResponse {
   mx?: {
     accepts_mail?: boolean;
     // Reacher 返回的 MX 记录列表，每条含 exchange/priority 等，便于排查投递域
-    records?: Array<{ exchange?: string; priority?: number; [key: string]: unknown }>;
+    records?: Array<{
+      exchange?: string;
+      priority?: number;
+      [key: string]: unknown;
+    }>;
   };
   smtp?: {
     is_deliverable?: boolean;
@@ -746,7 +750,12 @@ async function withThrottleLock<T>(fn: () => Promise<T>): Promise<T> {
 // 取被验证邮箱的域名（@ 之后部分），用于「同域名」判定
 function getEmailDomainForThrottle(email: string): string {
   const at = email.lastIndexOf("@");
-  return at >= 0 ? email.slice(at + 1).trim().toLowerCase() : "";
+  return at >= 0
+    ? email
+        .slice(at + 1)
+        .trim()
+        .toLowerCase()
+    : "";
 }
 
 function randomIntInRange(min: number, max: number): number {
@@ -769,6 +778,62 @@ async function applyVerifyThrottle(email: string): Promise<void> {
     lastVerifyDomain = domain;
     lastVerifyRequestAt = Date.now();
   });
+}
+
+// ---------- QuickEmailVerification 兜底校验（Reacher 判无效时二次确认）----------
+// 原因：Reacher 对 Outlook / Office 365 邮箱的验证经常误判为无效，
+// 因此当 Reacher 判定无效时再用 QuickEmailVerification 复核一次。
+// 该服务每天有 100 次免费额度，故仅在 Reacher 判 invalid 时才回退到此服务以省额度。
+// apikey 用数组轮询，分散配额压力。请替换为真实 key。
+const QEV_API_KEYS: string[] = [
+  "9063c5e25333d9cd87b466fc9988e872891e0b7207c01d56ea6319e8c78b", //product@focusapps.app
+  "116decbc0af57f0c874a1c04825bfa810ad910938f58e4a2d0f032a0cf86", //product@saashunt.best
+  "a0467a9576161005af3646bc7049b6fc3cad02b6319e362f34c4992f7b8e", //product@devhub.best
+];
+let qevKeyIndex = 0;
+function nextQevKey(): string {
+  const idx = qevKeyIndex % QEV_API_KEYS.length;
+  qevKeyIndex++;
+  // at() 在 noUncheckedIndexedAccess 下返回 string | undefined，?? 兜底为空串（数组为空时请求会失败并被日志记录）
+  return QEV_API_KEYS.at(idx) ?? "";
+}
+
+// QuickEmailVerification 返回结构（注意：布尔字段均为字符串 "true"/"false"）
+interface QEVResponse {
+  result?: string; // "valid" | "invalid"
+  reason?: string;
+  disposable?: string;
+  accept_all?: string;
+  role?: string;
+  free?: string;
+  email?: string;
+  user?: string;
+  domain?: string;
+  mx_record?: string;
+  mx_domain?: string;
+  safe_to_send?: string;
+  did_you_mean?: string;
+  success?: string;
+  message?: string;
+}
+
+// 用 QuickEmailVerification 验证邮箱；返回 null 表示请求失败（网络/非 2xx）
+async function verifyWithQEV(email: string): Promise<QEVResponse | null> {
+  const apikey = nextQevKey();
+  try {
+    const url = `https://api.quickemailverification.com/v1/verify?email=${encodeURIComponent(
+      email,
+    )}&apikey=${encodeURIComponent(apikey)}`;
+    const response = await fetch(url, { method: "GET" });
+    if (!response.ok) {
+      console.warn(`[qev] API returned ${response.status} for ${email}`);
+      return null;
+    }
+    return (await response.json()) as QEVResponse;
+  } catch (error) {
+    console.error(`[qev] API call failed for ${email}`, error);
+    return null;
+  }
 }
 
 /**
@@ -832,14 +897,39 @@ async function verifyEmail(email: string): Promise<boolean> {
     if (keep) {
       // 只缓存通过校验的邮箱
       await writeReacherCache(cacheKey, true, reasons, mxInfo);
+      return true;
     }
-    return keep;
+
+    // Reacher 判无效 → 用 QuickEmailVerification 二次校验兜底
+    const qev = await verifyWithQEV(email);
+    if (qev) {
+      // QEV 返回 200 → 其结果即最终结论：无论 true/false 都缓存，不再回退到 Reacher
+      const qevResult = qev.result ?? "";
+      const disposable = qev.disposable === "true";
+      // 无论结果如何都打印，主要输出 disposable / reason / accept_all / role / mx_record
+      console.log(
+        `[qev] ${cacheKey}: result=${qevResult} | disposable=${qev.disposable ?? ""} | reason=${qev.reason ?? ""} | accept_all=${qev.accept_all ?? ""} | role=${qev.role ?? ""} | mx_record=${qev.mx_record ?? ""}`,
+      );
+      // 仅当 QEV 判定 valid 且非一次性邮箱（disposable=false）才视为有效；否则视为无效
+      const reachable = qevResult === "valid" && !disposable;
+      await writeReacherCache(
+        cacheKey,
+        reachable,
+        [`qev: result=${qevResult}, disposable=${qev.disposable ?? ""}`],
+        mxInfo,
+      );
+      return reachable;
+    }
+    // QEV 未返回（非 200 / 网络失败）→ 结果不可信，维持 Reacher 判定(invalid)，不缓存
+    console.warn(
+      `[qev] ${cacheKey}: 调用失败/无返回，维持 Reacher 判定(invalid)`,
+    );
+    return false;
   } catch (error) {
     // API call failed, fail open
     console.error(`[verifyEmail] API call failed for email: ${email}`, error);
     return true;
   }
-
 }
 
 function findCandidateLinks(html: string, baseUrl: string): CandidateLink[] {
