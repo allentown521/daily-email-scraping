@@ -517,6 +517,8 @@ export interface ReacherCacheEntry {
   reachable: boolean;
   // 命中的丢弃原因，保留时为空数组
   reasons: string[];
+  // 首条 MX 记录（JSON 字符串），缓存命中时一并打印，便于排查投递域
+  firstMx?: string;
   cachedAt: number;
 }
 
@@ -526,7 +528,11 @@ export type ReacherCacheMap = Record<string, ReacherCacheEntry>;
 interface ReacherResponse {
   is_reachable?: string;
   syntax?: { is_valid_syntax?: boolean };
-  mx?: { accepts_mail?: boolean };
+  mx?: {
+    accepts_mail?: boolean;
+    // Reacher 返回的 MX 记录列表，每条含 exchange/priority 等，便于排查投递域
+    records?: Array<{ exchange?: string; priority?: number; [key: string]: unknown }>;
+  };
   smtp?: {
     is_deliverable?: boolean;
     is_disabled?: boolean;
@@ -568,6 +574,7 @@ async function writeReacherCache(
   email: string,
   reachable: boolean,
   reasons: string[],
+  firstMx?: string,
 ): Promise<void> {
   try {
     const now = Date.now();
@@ -578,7 +585,7 @@ async function writeReacherCache(
     )) {
       if (now - value.cachedAt < REACHER_CACHE_TTL_MS) cache[key] = value;
     }
-    cache[email] = { reachable, reasons, cachedAt: now };
+    cache[email] = { reachable, reasons, firstMx, cachedAt: now };
     await reacherCacheItem.setValue(cache);
   } catch (error) {
     console.error("[verifyEmail] Failed to persist cache:", error);
@@ -783,7 +790,8 @@ async function verifyEmail(email: string): Promise<boolean> {
       cached.reasons.length > 0
         ? cached.reasons.join(", ")
         : "无（未命中丢弃规则）";
-    const message = `[verifyEmail] Cache hit for ${cacheKey}: ${cached.reachable ? "keep" : "drop"} | 原因: ${reasonText}`;
+    const mxInfo = cached.firstMx ?? "无（mx 未返回 records）";
+    const message = `[verifyEmail] ${cacheKey}: ${cached.reachable ? "keep" : "drop"} | 原因: ${reasonText} | 首条MX: ${mxInfo}`;
     if (cached.reachable) {
       console.log(message);
     } else {
@@ -813,15 +821,19 @@ async function verifyEmail(email: string): Promise<boolean> {
     }
     const data = (await response.json()) as ReacherResponse;
     const { keep, reasons } = evaluateEmail(data);
+    // 与检查结果一并打印首条 MX 记录，便于排查投递域/邮件服务商
+    const firstMx = data.mx?.records?.[0];
+    const mxInfo = firstMx
+      ? JSON.stringify(firstMx)
+      : "无（mx 未返回 records）";
+    console.log(
+      `[verifyEmail] ${cacheKey}: ${keep ? "keep" : "drop"} | 原因: ${reasons.join(", ") || "无"} | 首条MX: ${mxInfo}`,
+    );
     if (keep) {
       // 只缓存通过校验的邮箱
-      await writeReacherCache(cacheKey, true, reasons);
-      return true;
+      await writeReacherCache(cacheKey, true, reasons, mxInfo);
     }
-    console.warn(
-      `[verifyEmail] Email dropped, not cached: ${email} | 原因: ${reasons.join(", ")}`,
-    );
-    return false;
+    return keep;
   } catch (error) {
     // API call failed, fail open
     console.error(`[verifyEmail] API call failed for email: ${email}`, error);
