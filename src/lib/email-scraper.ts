@@ -89,6 +89,8 @@ const TEST_DOMAINS = new Set([
   "worthly.si",
   "ownware.io",
   "exa.ai",
+  "gmcfix.com",
+  "litarbi.app",
 ]);
 
 const EMAIL_PREFIX_BLOCKLIST = new Set([
